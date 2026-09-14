@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Add the stack's package ecosystem here (pub, npm, gradle, ...), grouped the same way.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

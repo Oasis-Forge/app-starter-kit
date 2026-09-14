@@ -1,0 +1,38 @@
+name: CI
+
+# No path filters, so required status checks never hang.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Format, analyze, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # Set up the toolchain, then: install, format check, analyze, test with coverage.
+      # A stack overlay (stacks/<stack>/files) replaces this whole file.
+      - name: Stack checks
+        run: |
+          echo "::error::Fill in the stack's checks in .github/workflows/ci.yml."
+          exit 1
+
+      # Every merged PR is a release (release.yml), so the version must be above
+      # the latest vX.Y.Z tag and have a CHANGELOG.md entry. Dependabot PRs ship
+      # with the next release instead.
+      - name: Check version bump
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
+        run: bash scripts/version.sh check

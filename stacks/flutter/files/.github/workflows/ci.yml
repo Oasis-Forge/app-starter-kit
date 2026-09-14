@@ -1,0 +1,158 @@
+name: CI
+
+# Public repo: GitHub-hosted runners (including macOS) are free, so every PR
+# compiles Android and iOS. Desktop builds run only on pushes to main, to keep
+# PR checks fast. No path filters, so required status checks never hang.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '{{FLUTTER_VERSION}}'
+
+jobs:
+  check:
+    name: Format, analyze, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      # The generated lib/l10n/app_localizations*.dart files are committed;
+      # they must match the ARB files (LANG-2).
+      - name: Check generated localizations
+        if: hashFiles('l10n.yaml') != ''
+        run: |
+          flutter gen-l10n
+          git diff --exit-code -- lib/l10n
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test --coverage
+
+      - name: Upload coverage
+        if: always() && hashFiles('coverage/lcov.info') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          retention-days: 7
+
+      # Every merged PR is a release (release.yml), so the version in pubspec.yaml
+      # must be above the latest vX.Y.Z tag and have a CHANGELOG.md entry.
+      # Dependabot PRs ship with the next release instead.
+      - name: Check version bump
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
+        run: bash scripts/version.sh check
+
+  android:
+    name: Android build (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --debug
+
+  ios:
+    name: iOS build (unsigned)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign
+
+  desktop:
+    name: Desktop build (${{ matrix.target }})
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows
+            os: windows-latest
+          - target: linux
+            os: ubuntu-latest
+          - target: macos
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux build tools
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+
+      # Some Windows plugins (e.g. flutter_local_notifications_windows) need the
+      # ATL headers, an optional MSVC component the runner doesn't ship with.
+      - name: Install the ATL component for MSVC
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "$vsPath" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart --wait
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build
+        run: flutter build ${{ matrix.target }} --debug

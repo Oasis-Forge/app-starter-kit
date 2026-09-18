@@ -6,7 +6,7 @@ Copies the app starter kit into a project folder and starts a git repo there.
 .\new-app.ps1 -Name habit-tracker -Stack flutter
 
 .EXAMPLE
-.\new-app.ps1 -Name "monthly expense app" -Stack flutter -Existing
+.\new-app.ps1 -Name "an existing app" -Stack flutter -Existing
 Adds only the kit files the existing project doesn't have yet.
 #>
 param(

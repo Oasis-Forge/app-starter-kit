@@ -38,12 +38,13 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 - [ ] Launcher icons and splash screen, generated from one committed source.
 - [ ] Store IDs, permanent after the first upload and free of personal names: `{{APP_ID}}`.
 - [ ] Privacy policy published, and updated for every feature that touches user data.
-- [ ] The release build declares only the permissions the store listing admits to; the release workflow fails if another appears (RUN-2).
+- [ ] The release build declares only the permissions the store listing admits to; the release workflow dumps the built artifact's permissions and fails on any it doesn't expect (RUN-2). Write the list against a real build, not from memory, and check both directions: a permission the app needs and lost is as much a bug as one a plugin added.
 - [ ] Desktop packaging, if targeted: macOS sandbox entitlements, Windows MSIX, Linux Flatpak.
 
 ## Phase 4: Before release
 <!-- Scope added after Phase 2, each item with its decision date. Languages come first, so every later PR adds all languages as it goes. The first-run walkthrough comes last, so it shows finished features. -->
 - [ ] **Languages** (LANG-1–LANG-6)
+- [ ] **Ads and the purchase that removes them** (ADS-1–ADS-8, PAY-1–PAY-6), if the app carries ads: the item that turns an offline app online, so do it after everything else has settled. It brings the network permission with it and rewrites the privacy policy, the data-safety form, the privacy labels, the first-run privacy page and the store listing in the same release (ADS-6). Ships with the one-time purchase, which needs a product in both consoles and can only be tested on an internal track — so the developer accounts have to exist first.
 - [ ] **First-run setup and walkthrough** (RUN-3, RUN-4): last.
 
 ## Phase 5: Release

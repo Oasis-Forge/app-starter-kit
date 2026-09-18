@@ -74,6 +74,33 @@ One theme per PR. Bundle related items: one-checkbox PRs cost more review time t
 - One-time store setup takes weeks. New personal Google Play accounts need a closed test (12 testers for 14 days) before production; confirm the current rule. Start it before the features are done.
 - The privacy policy lives in `docs/` on GitHub Pages. Update it in every PR that touches user data.
 
+## The session is the unit of cost
+
+Every turn re-sends the whole conversation, so what you pay for is the *length of the session*, not the size of the question. A one-line question late in a long session costs about what any question costs by then.
+
+- **Images are the worst offender and they never leave.** One screenshot per thing that has to be judged by eye — right-to-left layout, a chart, a theme — and text dumps of the UI for everything else.
+- **Keep tool output small.** Grep with a path and read line ranges; run tests with a failures-only reporter; never print a whole file or a lockfile to look at three lines.
+- **Hand bulky mechanical work to a subagent.** Its context never comes back — only its result. Translations, doc and changelog edits, release chores, and long build logs all belong there.
+- **Compact or clear between roadmap items.** This is the whole win, and it is free. `/handoff` is what makes it safe: the state is in the repo and in memory, so the chat is disposable.
+
+A memory plugin does not fix this. It helps you *start fresh cheaply*, which is valuable, but it cannot shrink a session that is already long.
+
+## Adding a tool: skills and plugins
+
+A **skill** is instructions on disk, loaded only when invoked. The skills in this kit cost nothing when idle and are reviewable in a diff, so adding more is close to free.
+
+A **plugin with lifecycle hooks** is a different thing. Before installing one, answer:
+
+1. **Does it run on every session, or only when called?** On-demand is free when idle; a hook is a standing cost.
+2. **Does it ingest tool output and replay it later?** That is a prompt-injection surface: something hostile in a file, a web page, a CI log, or an imported file can persist and resurface in a later session, summarised into something that reads like fact. Without it, a bad tool result dies with the session.
+3. **Does it spend tokens in the background?** Some index or compress with their own model calls, billed to you.
+4. **Is its state reviewable in a diff, or opaque?** A text file you can read and correct beats a database you cannot.
+5. **Does it duplicate what `CLAUDE.md` and the docs already say?** Two sources of truth that can disagree are worse than one.
+
+**Stale memory is worse than none**: whatever a tool stored is later asserted with the confidence of fact. Prefer curated files you can fix in one edit.
+
+A dependency deserves the same suspicion — see the permissions row below.
+
 ## Lessons that earned a rule
 
 Each of these cost real time once. The fix is already in the template.
@@ -92,3 +119,9 @@ Each of these cost real time once. The fix is already in the template.
 | Store IDs almost carried a personal name | IDs and publisher metadata use the product name only |
 | Test data on the emulator belonged to the user | Put back anything changed while testing |
 | The chat gets cleared to save tokens, and context went with it | `/handoff` writes the state to memory; "resume" reads it |
+| A format check passed early in the session, a file was edited afterwards, and CI's format gate failed — twice in one day | The format check is the last thing before `git commit`, not a mid-session step. A hook that formats on edit is not a substitute: files written by shell redirection skip it |
+| A second push landed on a branch whose PR had already been merged, so the commit missed its release and had to be cherry-picked onto `main` | Before pushing to a branch that has been open a while, check `gh pr view <n> --json state` |
+| An asset's size was estimated rather than measured; the real figure was twice the guess and would have changed the decision | Measure, then put the trade-off to the user with the numbers in it. Never decide scope on a remembered file size |
+| A development build serving live ads can get the ad-network account suspended for self-clicks | Real ad unit IDs only in release builds; every other build uses the network's own test units, chosen by build mode in one config file |
+| An SDK read its account ID from the platform manifests before any app code ran, so the same ID lived in three files | When a value must exist in more than one place, add a test that fails when they drift apart |
+| One long session carrying a few screenshots burned a double-digit share of a usage window | Compact between items; one screenshot per thing to judge (see "The session is the unit of cost") |

@@ -37,10 +37,16 @@
 - End of session: `/handoff`. On "resume": read the handoff memory, `gh pr list`, `git log --oneline -3`.
 
 ## Token rules
+- The session is what costs: every turn re-sends the whole conversation, so a short question late in a long session is not cheap. Compact or clear between roadmap items; `/handoff` is what makes that safe.
+- Screenshots never leave the conversation once read. One per thing that has to be judged by eye (right-to-left layout, a chart, a theme); dump the UI as text for everything else.
 - Don't open generated or platform folders unless the task is platform-specific (list in `docs/STACK_NOTES.md`).
 - Grep with a `path`, then read line ranges. Never read lockfiles or generated project files whole; grep them.
-- Don't spawn subagents for tasks touching fewer than ~5 files. Use the `build-doctor` agent for long build logs.
+- Don't spawn subagents for tasks touching fewer than ~5 files, except routine work (next rule). Use the `build-doctor` agent for long build logs.
+- Routine work goes to a Sonnet subagent whatever its size — translations, doc, roadmap and changelog edits, releases. Decide the change in the main session and hand over the exact files and wording, then check the result with `git diff --stat` rather than by re-reading. A subagent's context never comes back; only its result does.
 - Don't summarize diffs back; state the result in 1–3 lines.
+
+## Adding a tool
+Before installing a skill or plugin, answer five questions: does it run every session or only when called; does it ingest tool output and replay it later (a prompt-injection surface, and the one that matters most); does it spend tokens in the background; is its state reviewable in a diff or opaque; does it duplicate what `CLAUDE.md` and the docs already say. A skill — instructions loaded on demand — passes all five, so adding skills is close to free. A plugin with lifecycle hooks needs a real reason. Stale memory is worse than none: whatever a tool stored gets asserted later with the confidence of fact.
 
 ## Read on demand only
 - `docs/ROADMAP.md`: phased plan and known bugs. Read when planning or picking up work.

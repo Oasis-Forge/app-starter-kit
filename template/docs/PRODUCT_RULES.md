@@ -73,6 +73,26 @@ The sections below are starter rules that held up in an earlier app. Keep, chang
 - **LOCK-2** With app lock on, the app asks at launch and after at least a minute in the background, and hides its content until unlocked. Notifications and widgets show no private data.
 - **LOCK-3** If the device no longer has biometrics or a screen lock, app lock turns itself off instead of locking the data away.
 
+## 6. Ads and paying
+<!-- Delete this section if the app is free and carries nothing. -->
+
+**Learn:** ads pay for a free app, but a banner that covers a row, moves a button under a finger, or interrupts an entry is what makes a free app feel cheap — and the money only comes if people keep the app. A subscription to *not* see something is resented; what is sold must already work.
+
+- **ADS-1** Banners only, in slots the layout reserves, on a named handful of screens. No interstitials, no pop-ups, no rewarded video, and nothing on the entry forms, the walkthrough, setup, dialogs, widgets, or generated files.
+- **ADS-2** A slot reserves its height before it asks for an ad, so an arriving ad never shifts what is under a finger, and an empty slot shows nothing at all: no frame, no placeholder.
+- **ADS-3** A slot sits outside the scrolling content and above the system navigation bar. Put it in the screen's bottom bar rather than at the end of the body, and the rule holds by construction instead of by padding.
+- **ADS-4** No ad is requested until setup and the walkthrough are finished (RUN-3, RUN-4) and consent has been answered, so the first minutes of the app belong to the app. None loads while the app is locked (LOCK-2).
+- **ADS-5** Where the law asks for it (the EEA, the UK, Switzerland), the network's own consent form appears before the first request, and Settings keeps a row to change the answer later. Refusing means non-personalised ads, never a nag or a feature withheld. A consent lookup that fails leaves the user unasked and requests nothing.
+- **ADS-6** What the ad SDK collects is declared in the store data-safety form, the privacy labels, and the privacy policy, in the same plain words as the rest. The release that adds ads rewrites all of them, and the first-run privacy page, together.
+- **ADS-7** The ad SDK is handed nothing from the app: no user records, and no keywords derived from them. One place in the code decides whether a slot fills, so an ad-free build and a paid ad-free app are the same code path.
+- **ADS-8** Only a release build asks with the real ad units; every other build uses the network's test units. Serving live ads from a development build is how an ad account gets suspended. IDs are not secrets — they ship in the binary — so they live in the repo, and a test fails if the copies in the code and the platform manifests drift apart.
+- **PAY-1** Ads are bought away by a one-time purchase, not a subscription. It follows the store account, "Restore purchases" sits beside the price, and the app asks the store what is owned at each launch, so a refund or a family-shared purchase lands without a reinstall.
+- **PAY-2** Prices come from the store, in the buyer's currency. Never hard-coded, and nothing to do with any currency setting in the app.
+- **PAY-3** Nothing is sold before it exists. A tier that isn't finished is shown as "coming soon", with no price and no button.
+- **PAY-4** Nothing that already works moves behind a payment. Paying removes ads and adds what is new.
+- **PAY-5** Selling is quiet: one row in Settings and one small target on the slot itself. No interstitial upsell, no countdown, no trial that lapses into a charge.
+- **PAY-6** A purchase that fails or is left pending never charges twice and never leaves the app half-paid: the app finishes every purchase with the store whatever the outcome, and the slots stay as they were until it is confirmed. A store with no such product configured is a real state — show "nothing to sell yet" rather than a button that only fails.
+
 ## Decisions
 <!-- Numbered and dated answers to open questions, citing the rules they settle. -->
 1. ({{DATE}}) <!-- e.g. "Title stays, as an optional field (ADD-1)." -->

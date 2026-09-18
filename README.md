@@ -20,12 +20,15 @@ template/                           Copied into every app
   .claude/skills/kickoff            Fill the placeholders, scaffold, first commit, GitHub repo (run once)
   .claude/skills/spec               Write a feature's rules before code
   .claude/skills/verify             Format + analyze + tests, failures only
-  .claude/skills/release            SemVer bump + changelog + local artifact
+  .claude/skills/release            SemVer bump + changelog + local artifacts + store release notes
   .claude/skills/ship               Pre-merge gate: coverage, drive by hand, release, PR
   .claude/skills/handoff            Save where work stopped before clearing the chat
   .claude/agents/build-doctor.md    Long build logs → root cause, on Haiku
   .github/                          CI with version check, release on merge, PR template, Dependabot, @claude
 stacks/flutter/files/               Overlay: Flutter CI, Android release, format hook, settings, STACK_NOTES.md
+  .claude/skills/emulator           Drive the Android emulator as text (tool/emu.sh), snapshot before each test
+  .claude/skills/l10n-add           One JSON file → a message in every ARB file (tool/add_messages.dart)
+  .claude/skills/coverage           Only the missed lines in the files a branch changed (tool/coverage_gaps.dart)
 ```
 
 ## Start a new app

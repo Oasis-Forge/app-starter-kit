@@ -48,7 +48,7 @@ flowchart LR
 | 2 Features | In dependency order; backup/export after the last schema step | Each item's data exists before anything reads it |
 | 3 Store readiness | Names, icons, IDs, privacy policy, permission checks, packaging | Store accounts and reviews take weeks |
 | 4 Before release | Late scope, dated. Languages first, first-run walkthrough last | Later PRs translate as they go; the walkthrough shows finished features |
-| 5 Release | Signing, closed testing, listings, production | |
+| 5–7 Release | One phase per store, in the order they ship: Google Play, then the desktop stores, then Apple | One store's paperwork and review never hold up another |
 
 - Items cite rule IDs and get ticked in the PR that completes them.
 - Every decision that adds, moves, or drops an item gets its date inline.
@@ -71,6 +71,7 @@ One theme per PR. Bundle related items: one-checkbox PRs cost more review time t
 
 - SemVer `x.y.z+N`. CI refuses a PR whose version isn't above the last tag or has no changelog entry. Merging tags `vX.Y.Z` and drafts a GitHub Release with the artifact. Drafts keep artifacts private on a public repo.
 - Changelog entries are written for users: what they can now do, not class names.
+- `/release` also writes the store's release notes in every listing language, into `store/` (gitignored), where the listing text, graphics and data-safety files live too.
 - One-time store setup takes weeks. New personal Google Play accounts need a closed test (12 testers for 14 days) before production; confirm the current rule. Start it before the features are done.
 - The privacy policy lives in `docs/` on GitHub Pages. Update it in every PR that touches user data.
 
@@ -125,3 +126,8 @@ Each of these cost real time once. The fix is already in the template.
 | A development build serving live ads can get the ad-network account suspended for self-clicks | Real ad unit IDs only in release builds; every other build uses the network's own test units, chosen by build mode in one config file |
 | An SDK read its account ID from the platform manifests before any app code ran, so the same ID lived in three files | When a value must exist in more than one place, add a test that fails when they drift apart |
 | One long session carrying a few screenshots burned a double-digit share of a usage window | Compact between items; one screenshot per thing to judge (see "The session is the unit of cost") |
+| Listing text, store graphics and data-safety files lived in Downloads, outside any repo | Everything store-facing goes in the repo's gitignored `store/` |
+| Play's release notes were written by hand, in one language, after the upload | `/release` writes them in every listing language with the version |
+| Closing the purchase sheet without buying left "Waiting for the store" spinning; the tests only covered buying and declining | Test every way an external flow can end, including the user just closing it |
+| The classic branch-protection API said 404 for a `main` a ruleset already protected, and a duplicate ruleset nearly followed | Check with `gh api repos/<owner>/<repo>/rulesets` |
+| Restoring an emulator snapshot brought back app versions the user had removed on purpose | Put back only what the session changed; ask before loading anything older |

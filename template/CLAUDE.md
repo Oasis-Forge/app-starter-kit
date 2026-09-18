@@ -23,7 +23,7 @@
 - Every model/state change gets a test. Tests assert what the user sees (text on screen, contents of a file), never just that output exists.
 - Feature order: model → migration → state → screen → test → analyze.
 - One branch per theme, PR to `main`; CI (`.github/workflows/ci.yml`) must pass.
-- Every merged PR is a release: `/release [major|minor|patch]` on the branch (SemVer + `CHANGELOG.md` entry; CI checks it). The merge tags `vX.Y.Z` and drafts a GitHub Release. The local build goes to `dist/{{SLUG}}-X.Y.Z.*` (gitignored); rebuild it after any app change on the branch.
+- Every merged PR is a release: `/release [major|minor|patch]` on the branch (SemVer + `CHANGELOG.md` entry; CI checks it). The merge tags `vX.Y.Z` and drafts a GitHub Release. The local build goes to `dist/{{SLUG}}-X.Y.Z.*` (gitignored); rebuild it after any app change on the branch. It also writes the store's release notes, in every listing language, to `store/<store>/release-notes/X.Y.Z.txt`.
 - Before a branch is merged: `/ship` (coverage of changed files, missing tests, drive it by hand, release, PR).
 
 ## Workflow
@@ -58,4 +58,5 @@ Before installing a skill or plugin, answer five questions: does it run every se
 ## Gotchas
 - If the repo is public: never commit secrets or personal data, and never print secrets in workflows.
 - Store IDs are permanent after the first upload and carry no personal names: `{{APP_ID}}`.
+- Store listing material (listing text, screenshots and graphics, data-safety answers and the scripts that make them, release notes) lives in `store/`, which is gitignored: one place in the repo, never Downloads.
 - Quote paths in shell commands; project paths may contain spaces.

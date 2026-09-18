@@ -34,7 +34,9 @@ Settings → Rules → Rulesets → New branch ruleset, target `main`:
 - Require a pull request before merging.
 - Require status checks to pass: the CI job names. Run CI on one PR first so the names show up in the picker.
 - Block force pushes and deletion.
-- Bypass list: Repository admin.
+- Bypass list: empty, so even the admin merges through a PR, or Repository admin if you want an emergency override.
+
+Check it with `gh api repos/{{GITHUB_OWNER}}/{{REPO}}/rulesets`. The classic branch-protection endpoint answers 404 for a branch protected only by a ruleset, which looks like no protection at all.
 
 ## Public repository
 
@@ -50,6 +52,7 @@ Settings → Rules → Rulesets → New branch ruleset, target `main`:
 Both mobile stores require a public privacy policy URL.
 1. Settings → Pages → Deploy from a branch → `main` / `/docs`.
 2. The policy is then live at `https://{{GITHUB_OWNER}}.github.io/{{REPO}}/privacy-policy`. Its contact is the GitHub Issues page, so no email address is published.
+3. **Ads:** the ad network reads `app-ads.txt` from the **root** of the domain in the store listing's Website field, not from the repo's path. Serve it from the organization's own Pages repo (`{{GITHUB_OWNER}}/{{GITHUB_OWNER}}.github.io`): one line per ad account, shared by every app. AdMob can only verify it once the app is public.
 
 Every file in `docs/` gets published.
 
@@ -68,6 +71,11 @@ Every file in `docs/` gets published.
 5. **Upload the first AAB by hand** in Play Console → Testing → Internal testing. The API can't create an app's first release.
 6. In Google Cloud, create a service account and a JSON key. In Play Console → Users and permissions, invite it with release permissions for this app. Save the JSON as `PLAY_SERVICE_ACCOUNT_JSON`.
 7. New personal developer accounts need a closed test with at least 12 testers for 14 days before production access. Confirm the current rule and start early.
+8. **Contact details.** Play shows two public emails: the store listing's support email (App support) and the developer account's email (About the developer, on every app). Give both one dedicated support address, and keep the Play Console login private. A personal account also shows its legal name and country there; only an organization account (it needs a D-U-N-S number) shows the brand instead.
+9. **Payments profile → Public merchant profile:** the merchant name is the publisher, never a personal name, with the same support email.
+10. **In-app products:** a one-time product needs a purchase option (type Buy). Add the testers' Google accounts under Settings → Licence testing (account level, not per app), so their test purchases cost nothing. Products only show in a build installed from a Play testing track, once the product is Active.
+11. **EU trader status** (Digital Services Act): an app with ads or purchases makes you a trader, and Play then shows your address, phone and email to EU users. Declare it before applying for production; a virtual office address keeps a home address private. Apple asks the same for the EU App Store.
+12. **Release notes** for every release come from `/release`, in `store/play/release-notes/X.Y.Z.txt`. All store listing material lives in `store/` (gitignored).
 
 Without the signing secrets, CI signs each APK with a throwaway debug key, which can't update an installed copy: back up in the app, uninstall, install, restore.
 

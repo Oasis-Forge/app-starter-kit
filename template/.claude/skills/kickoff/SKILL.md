@@ -14,7 +14,7 @@ Placeholders look like two opening braces, an UPPER_SNAKE name, and two closing 
    - the main competitor to study, if any
    Derive `SLUG` (kebab-case of the name).
 3. Fill every placeholder with Edit. Command placeholders (`CMD_*`) come from `docs/STACK_NOTES.md` → Fill-ins; with no stack notes, ask. Add the stack's check commands to the allow list in `.claude/settings.json`. Delete what doesn't apply: `docs/RELEASING.md` sections and CI jobs for platforms that aren't targets, starter rules the user doesn't want. Grep again until nothing matches outside this file.
-4. Scaffold the stack with the command in `docs/STACK_NOTES.md`, so it doesn't overwrite kit files. Set the version to `0.1.0` (`0.1.0+1` where there's a build number). Merge the stack's `.gitignore` with `/dist/`, `/coverage/`, signing files, and `.env*`.
+4. Scaffold the stack with the command in `docs/STACK_NOTES.md`, so it doesn't overwrite kit files. Set the version to `0.1.0` (`0.1.0+1` where there's a build number). Merge the stack's `.gitignore` with `/dist/`, `/coverage/`, `/store/`, signing files, and `.env*`.
 5. Run the install command, then `/verify`. Fix what the scaffold broke.
 6. Delete `.claude/skills/kickoff/`; it's done its job. Tick the finished Phase 0 items in `docs/ROADMAP.md`.
 7. Commit on `main` with the message in a scratchpad file (`git commit -F`): `chore: start <name> from the app starter kit`. Create the repo: `gh repo create <REPO> --private --source=. --remote=origin --push` (`--public` if chosen). If `gh` isn't authenticated, run `git init` and `git remote add origin <url>`, and tell the user.

@@ -47,12 +47,19 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 - [ ] **Ads and the purchase that removes them** (ADS-1–ADS-8, PAY-1–PAY-6), if the app carries ads: the item that turns an offline app online, so do it after everything else has settled. It brings the network permission with it and rewrites the privacy policy, the data-safety form, the privacy labels, the first-run privacy page and the store listing in the same release (ADS-6). Ships with the one-time purchase, which needs a product in both consoles and can only be tested on an internal track — so the developer accounts have to exist first.
 - [ ] **First-run setup and walkthrough** (RUN-3, RUN-4): last.
 
-## Phase 5: Release
-- [ ] Finish the one-time setup in `docs/RELEASING.md`: signing, store accounts, secrets.
-- [ ] Google Play: new personal developer accounts must run a closed test (at least 12 testers for 14 days) before production access. Confirm the current rule in Play Console and start early.
-- [ ] Play internal testing and TestFlight from a release.
-- [ ] Store listings in every language: screenshots, description, privacy policy URL, Play data safety form, App Store privacy labels. Then promote to production.
-- [ ] Desktop stores, if targeted: Mac App Store, Microsoft Store, Flathub.
+## Phase 5: Google Play
+<!-- One phase per store, in the order they ship, so one store's paperwork and review never hold up another. Delete the phases for stores {{APP_NAME}} doesn't target. -->
+- [ ] Finish the Android one-time setup in `docs/RELEASING.md`: signing, the developer account, contact details, payments profile, secrets.
+- [ ] Internal testing from a release, including in-app products bought by licence testers.
+- [ ] Closed test: new personal developer accounts need at least 12 testers for 14 days before production access. Confirm the current rule in Play Console and start early.
+- [ ] Store listing in every language from `store/play/` (text, screenshots, feature graphic, icon), privacy policy URL, data safety form, and `app-ads.txt` if the app shows ads.
+- [ ] EU trader status, then apply for production and promote the release.
+
+## Phase 6: Desktop stores
+- [ ] Microsoft Store and Flathub, if targeted (`docs/RELEASING.md`).
+
+## Phase 7: Apple
+- [ ] iOS and macOS together: TestFlight from a release, App Store privacy labels, listings in every language, then App Review.
 
 ## After v1
 <!-- Ideas deliberately left out of v1, one line. -->

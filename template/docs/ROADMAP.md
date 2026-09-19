@@ -44,7 +44,7 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 ## Phase 4: Before release
 <!-- Scope added after Phase 2, each item with its decision date. Languages come first, so every later PR adds all languages as it goes. The first-run walkthrough comes last, so it shows finished features. -->
 - [ ] **Languages** (LANG-1–LANG-6)
-- [ ] **Ads and the purchase that removes them** (ADS-1–ADS-8, PAY-1–PAY-6), if the app carries ads: the item that turns an offline app online, so do it after everything else has settled. It brings the network permission with it and rewrites the privacy policy, the data-safety form, the privacy labels, the first-run privacy page and the store listing in the same release (ADS-6). Ships with the one-time purchase, which needs a product in both consoles and can only be tested on an internal track — so the developer accounts have to exist first.
+- [ ] **Ads and the purchase that removes them** (ADS-1–ADS-9, PAY-1–PAY-6): banners, interstitials, and "Remove ads". The item that turns an offline app online, so do it after everything else has settled. It brings the network permission with it and rewrites the privacy policy, the data-safety form, the privacy labels, the first-run privacy page and the store listing in the same release (ADS-6). Ships with the one-time purchase, which needs a product in both consoles and can only be tested on an internal track — so the developer accounts have to exist first.
 - [ ] **First-run setup and walkthrough** (RUN-3, RUN-4): last.
 
 ## Phase 5: Google Play
@@ -52,7 +52,7 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 - [ ] Finish the Android one-time setup in `docs/RELEASING.md`: signing, the developer account, contact details, payments profile, secrets.
 - [ ] Internal testing from a release, including in-app products bought by licence testers.
 - [ ] Closed test: new personal developer accounts need at least 12 testers for 14 days before production access. Confirm the current rule in Play Console and start early.
-- [ ] Store listing in every language from `store/play/` (text, screenshots, feature graphic, icon), privacy policy URL, data safety form, and `app-ads.txt` if the app shows ads.
+- [ ] Store listing in every language from `store/play/` (text, screenshots, feature graphic, icon), privacy policy URL, data safety form, and `app-ads.txt`.
 - [ ] EU trader status, then apply for production and promote the release.
 
 ## Phase 6: Desktop stores

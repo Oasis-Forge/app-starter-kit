@@ -16,7 +16,7 @@ flowchart LR
 ## 1. Kickoff: `CLAUDE.md`
 
 - Name, one-line pitch, platforms, stack.
-- **Product principles:** three to five promises every feature must keep, such as "no ads, no tracking, no account". They live in `CLAUDE.md`, so every session sees them, and every rule cites them.
+- **Product principles:** three to five promises every feature must keep, such as "ads never interrupt a task, no account, data leaves only by user export". They live in `CLAUDE.md`, so every session sees them, and every rule cites them.
 - **Store IDs now:** they're permanent after the first upload. Derive them from the product (`com.<product>.app`), never from your personal name.
 - **Tooling on day one (Phase 0):** CI, the format hook, `/verify`, `/release`, the version check, and branch protection. It's cheap on an empty repo and painful to retrofit.
 

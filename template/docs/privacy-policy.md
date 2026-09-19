@@ -6,7 +6,7 @@ This policy covers the {{APP_NAME}} app ("the app"). <!-- Update it in every PR 
 
 ## Summary
 
-{{APP_NAME}} has no ads, no analytics, and no account. <!-- Adjust to the product principles: say plainly what is collected, or that nothing is. -->
+{{APP_NAME}} is free and shows ads, which a one-time purchase removes. It has no analytics and no account. <!-- Adjust to the product principles: say plainly what is collected, and by whom. -->
 
 ## Information stored on your device
 
@@ -14,7 +14,15 @@ This policy covers the {{APP_NAME}} app ("the app"). <!-- Update it in every PR 
 
 ## Information we collect
 
-We don't collect any information. The app has no servers, and <!-- on Android, it doesn't request internet access -->.
+We don't collect any information ourselves, and the app has no servers. What you enter in the app is never shared with anyone, the ad network included.
+
+## Ads
+
+The app shows banner and interstitial ads served by <!-- the ad network, e.g. Google AdMob, linked to its privacy policy -->. The ad network may collect your device's advertising ID, approximate location from your IP address, and how you interact with ads, to serve and measure them. <!-- Match this to the ad SDK's own data-safety disclosure (ADS-6). --> Where the law requires it, the app asks for your consent first; you can change your answer in Settings, and refusing means you see non-personalised ads. You can reset or delete your advertising ID in your device settings.
+
+## Purchases
+
+"Remove ads" is a one-time purchase through <!-- Google Play / the App Store -->. The store handles payment; we never see your payment details. The app asks the store only whether the purchase is owned.
 
 ## Backups and exports
 
@@ -30,7 +38,7 @@ We don't collect any information. The app has no servers, and <!-- on Android, i
 
 ## Children
 
-The app isn't directed at children under 13 and collects no information from anyone.
+The app isn't directed at children under 13.
 
 ## Changes to this policy
 

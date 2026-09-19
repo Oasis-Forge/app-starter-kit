@@ -10,7 +10,8 @@ Set up before the first feature, while it's cheap.
 - [ ] Every merged PR is a release: the CI version check, then a tag and a draft GitHub Release on merge. `v0.1.0` is the first.
 - [ ] The release workflow runs once by hand without secrets (unsigned artifacts, nothing published)
 - [ ] Privacy policy draft served by GitHub Pages
-- [ ] Competitor research (`docs/research/competitor-analysis.md`) and the first product rules (`docs/PRODUCT_RULES.md`)
+- [ ] The first product rules (`docs/PRODUCT_RULES.md`) for the areas Phase 2 opens with
+- [ ] Competitor research (`docs/research/competitor-analysis.md`) — or that file records, dated, that no competitor was studied and why. Either ticks this; leaving it as the shipped template does not
 - [ ] **Start the store paperwork now, because it is measured in weeks while everything else is measured in days.** Create and verify the developer accounts, reserve `{{APP_ID}}` in each console, and create the app record. It is the only item here that cannot be hurried later: identity verification takes days, and a new personal Play account then needs a closed test running for 14 continuous days with at least 12 testers before it can even apply for production. Write the date that test must start to hit the launch you want, and put it here: <!-- closed test starts by: DATE -->
   Everything in Phase 4 depends on it. The one-time purchase can only be tested against a real product in a real console, on a build installed from a real track.
 

@@ -29,6 +29,7 @@ flowchart LR
 - Record what you didn't explore, so the gaps are explicit.
 - Output: an at-a-glance table (them / us today / our plan), what they do well, their weak spots (your opening), a one-line positioning, and the roadmap impact.
 - **Learn, don't copy.** The competitor shows what users expect. Our rule has to be better, not the same.
+- **There may not be one, and that is a stage outcome too.** Record it in the file, dated, with why — nothing close enough, deliberate, or not yet. Then `/spec` opens each section with **Learn** instead of **They do**, and writes the rules from the user need. What it must never do is invent a competitor to fill the shape: every rule underneath would then cite a guess as observed behaviour, and the guess is what gets defended later. The starter rules this kit ships are written that way already — **Learn** and no **They do** — so the shape has a worked example.
 - If an agent drives the emulator, give it a hard cap (about 45 tool calls), a checklist of at most eight questions, and UI text dumps instead of screenshots. An uncapped run took 143 calls; the capped one took 33.
 
 ## 3. Rules: `docs/PRODUCT_RULES.md`

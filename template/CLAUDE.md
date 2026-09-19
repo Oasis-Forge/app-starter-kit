@@ -52,7 +52,7 @@ Before installing a skill or plugin, answer five questions: does it run every se
 ## Read on demand only
 - `docs/ROADMAP.md`: phased plan and known bugs. Read when planning or picking up work.
 - `docs/PRODUCT_RULES.md`: behavior rules with IDs. Read the relevant section before implementing or testing a feature.
-- `docs/research/competitor-analysis.md`: what the competitor does. Read before `/spec`.
+- `docs/research/competitor-analysis.md`: what the competitor does, or a dated record that none was studied. Read before `/spec` either way — it decides whether a rules section opens with **They do** or with **Learn**.
 - `docs/RELEASING.md`: signing, secrets, store release steps.
 - `docs/STACK_NOTES.md`: stack commands, architecture that worked, traps, device drill.
 

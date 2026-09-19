@@ -33,8 +33,42 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
 - Set the Android `applicationId`/`namespace` and the iOS/macOS bundle IDs to `APP_ID` exactly. `flutter create` appends the project name to the org.
 - `.gitignore`: add `/dist/`, `/coverage/`, `/store/`, `android/key.properties`, and `*.jks`.
 - `analysis_options.yaml`: add `unawaited_futures`, `prefer_single_quotes`, `prefer_const_constructors`, and `always_declare_return_types`.
-- Release signing reads `android/key.properties`. Without it, release builds are debug-signed.
-- `release.yml` fails when the release APK declares a permission missing from its `ALLOWED` list (RUN-2). Add each permission as a shipped feature needs it, space-separated (`android.permission.POST_NOTIFICATIONS`), and update the privacy policy in the same PR.
+- **Release signing has to be wired in by hand.** `flutter create` generates no signing config, so a release build is debug-signed even with `android/key.properties` present and every CI secret set — and Play rejects the upload for not matching the upload certificate. Add this to `android/app/build.gradle.kts` above `android {`, and the `signingConfig` line inside `buildTypes`:
+
+  ```kotlin
+  import java.util.Properties
+
+  val keystoreProperties = Properties().apply {
+      val f = rootProject.file("key.properties")
+      if (f.exists()) f.inputStream().use { load(it) }
+  }
+
+  android {
+      signingConfigs {
+          create("release") {
+              keystoreProperties.getProperty("storeFile")?.let { storeFile = file(it) }
+              storePassword = keystoreProperties.getProperty("storePassword")
+              keyAlias = keystoreProperties.getProperty("keyAlias")
+              keyPassword = keystoreProperties.getProperty("keyPassword")
+          }
+      }
+      buildTypes {
+          release {
+              // Falls back to the debug key when key.properties is absent, so a local
+              // release build still works; release.yml checks the bundle's real
+              // certificate, so CI cannot ship a debug-signed one by accident.
+              signingConfig = if (rootProject.file("key.properties").exists()) {
+                  signingConfigs.getByName("release")
+              } else {
+                  signingConfigs.getByName("debug")
+              }
+          }
+      }
+  }
+  ```
+
+  On the Groovy `build.gradle`, the same thing with `def keystoreProperties = new Properties()` and `signingConfigs { release { ... } }`.
+- `release.yml` dumps the release APK's permissions and hands them to `tool/check_permissions.sh`, which compares them against the `ALLOWED` list in that workflow (RUN-2) **both ways**: a permission a plugin added fails the release, and so does one the app needs and quietly lost. Add each permission as a shipped feature needs it, space-separated (`android.permission.POST_NOTIFICATIONS`), and update the privacy policy in the same PR. An empty `ALLOWED` means "declares none", not "allow anything".
 - Delete the `desktop` job in `ci.yml` if desktop isn't a target, and the `ios` job if iOS isn't.
 
 ## Don't read

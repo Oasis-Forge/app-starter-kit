@@ -42,10 +42,23 @@ jobs:
           name=$(bash scripts/version.sh name)
           tag="v$name"
           release=false
+          # Without --exit-code this is empty and exit 0 when the tag does not exist,
+          # so the pipe's status cannot mask the lookup's.
+          tagged=$(git ls-remote --tags origin "refs/tags/$tag" | cut -f1)
           if [ "$GITHUB_REF" != refs/heads/main ]; then
             echo "Not on main: building $tag without releasing it." >> "$GITHUB_STEP_SUMMARY"
-          elif git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
-            echo "$tag is already released: nothing to release." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$tagged" ]; then
+            # CI compares each PR against the newest tag, so two PRs opened together
+            # can both pass with the same version. The first merge tags it; the second
+            # then had nothing to release and said so in the summary, leaving main's
+            # code unreleased and the published artifact older than its own changelog.
+            # Silently doing nothing is the one outcome worth refusing.
+            if [ "$tagged" = "$GITHUB_SHA" ]; then
+              echo "$tag is already released from this commit: nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::$tag already points at ${tagged:0:7}, but main is now $GITHUB_SHA. This commit would ship as part of no release. Raise the version on a branch off main and merge it, so these changes get a release of their own."
+              exit 1
+            fi
           else
             release=true
           fi
@@ -70,7 +83,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -106,26 +119,59 @@ jobs:
           flutter build appbundle --release
           flutter build apk --release
 
-      # RUN-2: the store listing's data-safety answers depend on the permissions.
-      # List the ones the app may declare; any other fails the release.
+      # Having the secrets does not mean the build used them: the signing config has
+      # to be wired into android/app/build.gradle.kts as well (docs/STACK_NOTES.md →
+      # Scaffold). Without it the AAB is debug-signed, Play rejects it for not
+      # matching the upload certificate, and the warning below is suppressed because
+      # the job believed it was signed. Ask the artifact, not the secret.
+      - name: Prove the bundle is really signed
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          set -euo pipefail
+          certs=$(keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab)
+          echo "$certs"
+          if printf '%s' "$certs" | grep -q 'CN=Android Debug'; then
+            echo "::error::The signing secrets are set but the bundle is debug-signed: android/app/build.gradle.kts is not reading android/key.properties (docs/STACK_NOTES.md → Scaffold)."
+            exit 1
+          fi
+
+      # RUN-2: the store listing's data-safety answers depend on the permissions, so
+      # a plugin adding one silently has to fail the release. Checked both ways: a
+      # permission the app needs and lost is as much a bug as one it gained.
       - name: Check the APK's permissions
         env:
           ALLOWED: ''
         run: |
+          # The default step shell is `bash -e` with no pipefail, so the previous
+          # `aapt2 ... | tee permissions.txt` reported tee's exit code: a failed dump
+          # left the file empty and the gate passed with nothing in it. The comparison
+          # itself now lives in tool/check_permissions.sh, where it is shellchecked
+          # and covered by tests/test-permission-gate.sh.
+          set -euo pipefail
           aapt2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)
-          "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk | tee permissions.txt
-          unexpected=$(sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" permissions.txt \
-            | grep -v "^${PACKAGE_NAME}\." | grep -vxF -f <(printf '%s\n' $ALLOWED) || true)
-          if [ -n "$unexpected" ]; then
-            echo "::error::The release APK declares permissions outside the allowed list (RUN-2): $unexpected"
-            exit 1
-          fi
+          "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk > permissions.txt
+          cat permissions.txt
+          bash tool/check_permissions.sh permissions.txt
 
       - name: Name the files after the version
+        id: files
         run: |
+          set -euo pipefail
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk "dist/$SLUG-$NAME.apk"
           cp build/app/outputs/bundle/release/app-release.aab "dist/$SLUG-$NAME.aab"
+          # Play symbolicates crashes with this. It is built on every release build
+          # and was thrown away with the runner, so every stack trace in Play Console
+          # stayed obfuscated. It never goes near the public release: it is an input
+          # to Play and to the retained build artifact only.
+          mapping=""
+          if [ -f build/app/outputs/mapping/release/mapping.txt ]; then
+            mapping="dist/$SLUG-$NAME-mapping.txt"
+            cp build/app/outputs/mapping/release/mapping.txt "$mapping"
+          else
+            echo "No mapping.txt: this build is not minified, so Play needs no deobfuscation file." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "mapping=$mapping" >> "$GITHUB_OUTPUT"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -157,7 +203,7 @@ jobs:
       # Draft: on a public repo the APK stays private until you publish the release.
       - name: Attach APK to a draft GitHub Release
         if: env.RELEASE == 'true'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.TAG }}
           name: '{{APP_NAME}} ${{ env.NAME }}'
@@ -167,10 +213,11 @@ jobs:
 
       - name: Upload to Play internal testing
         if: env.RELEASE == 'true' && steps.signing.outputs.signed == 'true' && env.HAS_PLAY_CREDENTIALS == 'true'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ env.PACKAGE_NAME }}
           releaseFiles: dist/${{ env.SLUG }}-${{ env.NAME }}.aab
+          mappingFile: ${{ steps.files.outputs.mapping }}
           track: internal
           status: draft

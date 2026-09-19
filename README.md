@@ -7,7 +7,8 @@ The docs, Claude Code setup, and GitHub workflows that took a real app from an e
 ```
 PLAYBOOK.md                         The flow: kickoff → research → rules → roadmap → build loop → release
 new-app.ps1                         Copies the kit into D:\Desktop\projects\<name>, and -Update refreshes an app
-tests/test-new-app.ps1              Checks new-app.ps1 against the ways it has been wrong before
+tests/                              Checks the kit's own tooling against the ways it has been wrong before
+.github/workflows/ci.yml            Runs those tests, shellchecks the scripts, parses every template workflow
 template/                           Copied into every app
   CLAUDE.md                         Stack, commands, conventions, workflow, token rules, gotchas
   README.md  CHANGELOG.md           
@@ -30,6 +31,7 @@ stacks/flutter/files/               Overlay: Flutter CI, Android release, format
   .claude/skills/emulator           Drive the Android emulator as text (tool/emu.sh), snapshot before each test
   .claude/skills/l10n-add           One JSON file → a message in every ARB file (tool/add_messages.dart)
   .claude/skills/coverage           Only the missed lines in the files a branch changed (tool/coverage_gaps.dart)
+  tool/check_permissions.sh         RUN-2 gate: the release build declares exactly the allowed permissions
 ```
 
 ## Start a new app

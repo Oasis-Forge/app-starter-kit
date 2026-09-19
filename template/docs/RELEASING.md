@@ -28,6 +28,8 @@ Add them in GitHub → Settings → Secrets and variables → Actions, or with `
 | `APPSTORE_PRIVATE_KEY` | secret | iOS release | Full contents of the `.p8` API key |
 | `APPLE_TEAM_ID` | variable | iOS release | 10-character Apple team ID |
 
+The release workflow is the one job that decodes the keystore and holds the Play key, so the third-party actions in it are pinned to a commit SHA with the version in a trailing comment (Dependabot still bumps them). A major-version tag is mutable: whoever controls the action can move it onto new code, and that code would run with those secrets. Actions under `actions/` stay on their major tag — same trust as the runner itself.
+
 ## Protect `main`
 
 Settings → Rules → Rulesets → New branch ruleset, target `main`:
@@ -66,7 +68,7 @@ Every file in `docs/` gets published.
    ```powershell
    [Convert]::ToBase64String([IO.File]::ReadAllBytes("upload-keystore.jks")) | Set-Clipboard
    ```
-3. Optional, for signed local builds: keep the keystore and a `key.properties` in the Android project, both gitignored.
+3. Wire the signing config into the Android build (`docs/STACK_NOTES.md` → Scaffold). The scaffold does not generate one, so without it the release build is debug-signed even with every secret set, and Play rejects the upload for not matching the upload certificate. The release workflow reads the built bundle's own certificate and fails on a debug one, rather than trusting that the secrets were used. For signed local builds, keep the keystore and a `key.properties` in the Android project too, both gitignored.
 4. In Play Console, create the app with package `{{APP_ID}}` and keep Play App Signing enabled.
 5. **Upload the first AAB by hand** in Play Console → Testing → Internal testing. The API can't create an app's first release.
 6. In Google Cloud, create a service account and a JSON key. In Play Console → Users and permissions, invite it with release permissions for this app. Save the JSON as `PLAY_SERVICE_ACCOUNT_JSON`.

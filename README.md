@@ -95,11 +95,18 @@ It never overwrites a file the repo already has, and sorts every one of them:
 | `added` | the repo didn't have it |
 | `kept` | identical to the kit's already |
 | `theirs` | differs, and the app fills this one in for itself (`CLAUDE.md`, `README.md`, a skill with commands in it) — expected |
-| `stale` | differs, and the kit owns it outright, so the repo is carrying an older copy. The current one lands beside it as `.kit-new` |
+| `differs` | differs, and the kit wrote every line of its own copy. The kit's version lands beside it as `.kit-new` |
 
-**`.kit-version` is not written while anything is `stale`**, because a stamp would make `-Update` answer "already up to date" over exactly the files that need replacing. Merge the `.kit-new` files, delete them, run `-Existing` again, and the stamp lands.
+**`differs` means read both, not replace.** The kit can only tell that its copy has no `{{PLACEHOLDER}}` in it. It cannot tell that yours holds settings of your own — and a file with no placeholder anywhere still can. Both of these were real, in one repo, on the first adoption:
 
-An established app usually needs more than this: the kit assumes the app is at the repo root, and it will add docs (`docs/ROADMAP.md`, `docs/RELEASING.md`) that may duplicate ones the repo keeps elsewhere. Read the dry run and delete what you don't want before committing.
+- `scripts/version.sh` with `VERSION_FILE=${VERSION_FILE:-Hisscore/pubspec.yaml}`, because that app lives in a subdirectory. Overwriting points every version command at a file that isn't there.
+- `.github/dependabot.yml` with `directory: /Hisscore` against the kit's `/`. Overwriting points Dependabot at a directory with no manifest.
+
+So merge by hand, keep what is yours, and delete the `.kit-new`.
+
+**`.kit-version` is not written while anything is `differs`**, because a stamp would make `-Update` answer "already up to date" over exactly the files still waiting to be read. Once none are left, run `-Existing` again and the stamp lands.
+
+An established app usually needs more than this. The kit assumes the app is at the repo root, and it adds docs (`docs/ROADMAP.md`, `docs/RELEASING.md`) that may duplicate ones the repo keeps elsewhere. Read the dry run and delete what you don't want before committing — or skip the additions entirely and take only the files you already have, which is often all an established app wants.
 
 ## Update an app the kit already made
 

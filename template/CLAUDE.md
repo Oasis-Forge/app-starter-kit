@@ -24,7 +24,7 @@
 - Feature order: model → migration → state → screen → test → analyze.
 - One branch per theme, PR to `main`; CI (`.github/workflows/ci.yml`) must pass.
 - Every merged PR is a release: `/release [major|minor|patch]` on the branch (SemVer + `CHANGELOG.md` entry; CI checks it). The merge tags `vX.Y.Z` and drafts a GitHub Release. The local build goes to `dist/{{SLUG}}-X.Y.Z.*` (gitignored); rebuild it after any app change on the branch. It also writes the store's release notes, in every listing language, to `store/<store>/release-notes/X.Y.Z.txt`.
-- Before a branch is merged: `/ship` (coverage of changed files, missing tests, drive it by hand, release, PR).
+- Before a branch is merged: `/ship` (coverage of changed files, missing tests, docs, `/verify`, `/release`, drive it by hand, PR). The format check is the last thing before a commit, never a mid-session step.
 
 ## Workflow
 - Start of an item: `git switch main`, `git pull --ff-only`, then branch from it. Never stack on an unmerged branch.

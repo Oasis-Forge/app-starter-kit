@@ -82,6 +82,6 @@ adb shell am start -S -n <APP_ID>/.MainActivity
 - A long press or drag needs `input motionevent DOWN x y`, a sleep, `MOVE`s, and `UP` as separate calls. `input swipe` is too smooth for the launcher.
 - Screenshot coordinates are in the displayed image's frame; scale them before tapping.
 - In a right-to-left locale the app bar is mirrored, so the overflow menu is on the left.
-- Take a screenshot after every navigation step. Blind batches of taps go wrong without anyone noticing.
+- Check the screen after every navigation step: blind batches of taps go wrong without anyone noticing. Check it by reading it, not by photographing it — `/emulator` lists the screen as text for a fraction of a screenshot. Screenshots stay for what has to be judged by eye (`CLAUDE.md` → Token rules). Driving by hand without `/emulator`, `adb shell uiautomator dump` gives the same list.
 - The first tap on a home-screen widget after `am force-stop` gets eaten. Tap again before concluding it's broken.
 - The emulator holds the user's own test data. Back up in the app first, and restore or undo every change before finishing.

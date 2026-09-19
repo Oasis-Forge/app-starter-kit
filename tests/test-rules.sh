@@ -18,7 +18,7 @@ bad() { echo "  FAIL  $1"; failures=$((failures + 1)); }
 fixture() {
   rm -rf "$work/app"
   mkdir -p "$work/app/docs" "$work/app/lib"
-  cd "$work/app"
+  cd "$work/app" || exit 1
   git init --quiet -b main .
   git config user.email t@example.com
   git config user.name test

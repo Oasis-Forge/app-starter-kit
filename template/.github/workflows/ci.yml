@@ -36,6 +36,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: bash scripts/check_public_docs.sh
 
+      # The rule IDs are the spine of the method and nothing else checks them. An
+      # ID cited but defined nowhere is a typo or a renumbering, and fails; a rule
+      # nothing cites is reported in the summary without failing, because it may
+      # simply not be built yet.
+      - name: Check the product rules
+        if: ${{ !cancelled() }}
+        run: bash scripts/rules.sh
+
       # Every merged PR is a release (release.yml), so the version must be above
       # the latest vX.Y.Z tag and have a CHANGELOG.md entry. Dependabot PRs ship
       # with the next release instead.

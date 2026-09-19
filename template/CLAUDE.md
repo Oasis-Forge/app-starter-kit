@@ -10,6 +10,7 @@
 - `{{CMD_BUILD_RELEASE}}` builds the release artifact; `{{CMD_RUN}}` runs the app
 - `/verify` runs format check + analyze + tests and reports failures only
 - `bash scripts/version.sh name|build|check|notes` reads the version, runs CI's bump check, prints the changelog entry
+- `bash scripts/rules.sh [ID]` lists rules nothing cites, and fails on a citation to a rule that does not exist
 
 ## Architecture
 <!-- Fill in as Phase 1 lands: one line per folder or key file, plus the data flow (screen → state → storage). Update it in the PR that changes the structure. -->

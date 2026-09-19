@@ -50,6 +50,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # tests/-Update needs a commit older than HEAD to diff against
 
       # A parse error in new-app.ps1 only shows up when someone starts an app.
       - name: Parse every script

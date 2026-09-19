@@ -56,7 +56,10 @@ Set-Content "$adopted\README.md" '# the app''s own readme' -Encoding UTF8
 Check 'ci.yml still comes from the stack' (Has "$adopted\.github\workflows\ci.yml" 'subosito/flutter-action')
 Check 'the placeholder CI stub is gone' (-not (Has "$adopted\.github\workflows\ci.yml" "Fill in the stack"))
 Check 'settings.json still has the hook' (Has "$adopted\.claude\settings.json" '"hooks"')
-Check "the repo's own file is kept" ((Get-Content "$adopted\README.md" -Raw).Trim() -eq "# the app's own readme")
+# Get-Content -Raw keeps the byte-order mark that Set-Content -Encoding UTF8 writes,
+# and Trim() does not count it as whitespace, so strip it explicitly.
+$readme = (Get-Content "$adopted\README.md" -Raw).Trim([char]0xFEFF, ' ', "`r", "`n", "`t")
+Check "the repo's own file is kept (found '$readme')" ($readme -eq "# the app's own readme")
 
 # -Update must move only what the kit changed, and never undo /kickoff.
 Write-Output ""
@@ -64,7 +67,11 @@ Write-Output "-Update"
 & $script -Name fresh -ProjectsRoot $WorkRoot -Update | Out-Null
 Check 'a project level with the kit copies nothing' (-not (Test-Path "$fresh\CLAUDE.md.kit-new"))
 
+# A shallow clone (actions/checkout defaults to fetch-depth 1) grafts history so the
+# root commit IS HEAD. Updating from HEAD to HEAD is a no-op that would pass every
+# check below for the wrong reason, so say so instead of pretending to test it.
 $old = (git -C $kit rev-list --max-parents=0 HEAD 2>$null | Select-Object -Last 1)
+if ($old -and $old -eq (git -C $kit rev-parse HEAD 2>$null)) { $old = $null }
 if ($old) {
     (Get-Content "$fresh\.kit-version" -Raw) -replace 'commit = [0-9a-f]+', "commit = $old" |
         Set-Content "$fresh\.kit-version" -Encoding UTF8

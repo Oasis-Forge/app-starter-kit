@@ -8,7 +8,7 @@
 set -uo pipefail
 
 kit=$(cd "$(dirname "$0")/.." && pwd)
-cd "$kit"
+cd "$kit" || exit 1
 failures=0
 
 ok()  { echo "  ok    $1"; }

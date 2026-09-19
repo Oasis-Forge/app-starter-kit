@@ -60,7 +60,7 @@ It's a personal skill rather than a project one because it has to be available b
    ```powershell
    .\new-app.ps1 -Name habit-tracker -Stack flutter
    ```
-   It resolves `template/` and the stack's `files/` into one set (the stack wins), copies it into `D:\Desktop\projects\habit-tracker`, runs `git init`, and writes `.kit-version` recording the kit commit and every path the kit owns. Use `-Stack none` for a stack the kit doesn't cover yet, `-DryRun` to print what would be copied without writing, and `-Existing` for a repo that already exists: files the repo already has are kept, everything else is added.
+   It resolves `template/` and the stack's `files/` into one set (the stack wins), copies it into `D:\Desktop\projects\habit-tracker`, runs `git init`, and writes `.kit-version` recording the kit commit and every path the kit owns. Use `-Stack none` for a stack the kit doesn't cover yet, `-DryRun` to print what would be copied without writing, and `-Existing` to adopt the kit into a repo that already exists (below).
 2. Open Claude Code in the new folder and run `/kickoff`. It asks for the name, pitch, principles, platforms, and store ID; fills every placeholder; scaffolds the stack; makes the first commit; and creates the private GitHub repo.
 3. Continue with [PLAYBOOK.md](PLAYBOOK.md) stage 2 (research).
 
@@ -80,6 +80,26 @@ It's a personal skill rather than a project one because it has to be available b
 | `GITHUB_OWNER`, `REPO` | your-github-handle, habit-tracker |
 | `DATE`, `DATE_ISO` | 14 September 2026, 2026-09-14 |
 | `CMD_*` | Commands from the stack's `docs/STACK_NOTES.md` → Fill-ins |
+
+## Adopt the kit into an app that already exists
+
+```powershell
+.\new-app.ps1 -Name an-existing-app -Stack flutter -Existing -DryRun   # read this first
+.\new-app.ps1 -Name an-existing-app -Stack flutter -Existing
+```
+
+It never overwrites a file the repo already has, and sorts every one of them:
+
+| | |
+|---|---|
+| `added` | the repo didn't have it |
+| `kept` | identical to the kit's already |
+| `theirs` | differs, and the app fills this one in for itself (`CLAUDE.md`, `README.md`, a skill with commands in it) — expected |
+| `stale` | differs, and the kit owns it outright, so the repo is carrying an older copy. The current one lands beside it as `.kit-new` |
+
+**`.kit-version` is not written while anything is `stale`**, because a stamp would make `-Update` answer "already up to date" over exactly the files that need replacing. Merge the `.kit-new` files, delete them, run `-Existing` again, and the stamp lands.
+
+An established app usually needs more than this: the kit assumes the app is at the repo root, and it will add docs (`docs/ROADMAP.md`, `docs/RELEASING.md`) that may duplicate ones the repo keeps elsewhere. Read the dry run and delete what you don't want before committing.
 
 ## Update an app the kit already made
 

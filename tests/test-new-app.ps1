@@ -81,6 +81,45 @@ if ($shortRoot -and $shortRoot -ne $WorkRoot) {
     Write-Output "  skip  8.3 short names are not enabled on this volume"
 }
 
+# A repo adopting the kit usually has older copies of the kit's own tooling. Keeping
+# them silently, then stamping at the current commit, left them frozen: -Update would
+# answer "already up to date" and never reach them again.
+Write-Output ""
+Write-Output "-Existing when the repo has an older copy of a kit-owned file"
+$stale = Join-Path $WorkRoot 'stale'
+New-Item -ItemType Directory -Force -Path (Join-Path $stale 'scripts') | Out-Null
+Set-Content "$stale\scripts\version.sh" '# an older copy' -Encoding UTF8
+& $script -Name stale -Stack flutter -ProjectsRoot $WorkRoot -Existing | Out-Null
+Check 'the older copy is left in place' (Has "$stale\scripts\version.sh" 'an older copy')
+Check 'the current one lands beside it' (Has "$stale\scripts\version.sh.kit-new" 'One version tool')
+Check 'and no stamp is written while it is stale' (-not (Test-Path "$stale\.kit-version"))
+
+# Merge it, and the next run records the stamp.
+Copy-Item "$stale\scripts\version.sh.kit-new" "$stale\scripts\version.sh" -Force
+Remove-Item "$stale\scripts\version.sh.kit-new" -Force
+& $script -Name stale -Stack flutter -ProjectsRoot $WorkRoot -Existing | Out-Null
+Check 'once merged, the stamp lands' (Test-Path "$stale\.kit-version")
+
+# Flutter's build/ has Gradle transform paths past the 260-character limit. Walking
+# the whole destination hit them and threw, so -Existing died on the first real app
+# it was pointed at -- the case it exists for.
+Write-Output ""
+Write-Output "-Existing on a repo containing a path past the Windows limit"
+$deep = Join-Path $WorkRoot 'deep'
+New-Item -ItemType Directory -Force -Path $deep | Out-Null
+$long = "\\?\" + $deep + "\build\" + (("x" * 60 + "\") * 5) + "nested"
+try {
+    [System.IO.Directory]::CreateDirectory($long) | Out-Null
+    [System.IO.File]::WriteAllText($long + "\f.txt", "x")
+    $made = $true
+} catch { $made = $false }
+if ($made) {
+    & $script -Name deep -Stack flutter -ProjectsRoot $WorkRoot -Existing | Out-Null
+    Check 'it copies the kit in regardless' (Has "$deep\scripts\version.sh" 'One version tool')
+} else {
+    Write-Output "  skip  this volume would not create a path that long"
+}
+
 # -Update must move only what the kit changed, and never undo /kickoff.
 Write-Output ""
 Write-Output "-Update"

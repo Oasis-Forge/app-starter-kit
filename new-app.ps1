@@ -136,13 +136,22 @@ if ($Update -and $fromCommit) {
 
 # The destination's file list as it was before this run, so -Existing can never
 # report "kept" for a file this same run just created.
+#
+# Only the kit's own paths are ever asked about, so ask about exactly those rather
+# than enumerating the destination. Walking it whole meant walking a real project's
+# build/ tree, where Gradle's transform directories run past the 260-character path
+# limit and Resolve-Path fails outright -- so -Existing crashed on the first Flutter
+# app it was pointed at, which is the case it exists for.
 $before = @{}
-foreach ($rel in (Get-RelativeFiles $dest).Keys) { $before[$rel] = $true }
+foreach ($rel in $files.Keys) {
+    if (Test-Path -LiteralPath (Join-Path $dest $rel)) { $before[$rel] = $true }
+}
 
 $copied = New-Object System.Collections.Generic.List[string]
 $kept = New-Object System.Collections.Generic.List[string]
 $review = New-Object System.Collections.Generic.List[string]
 $added = New-Object System.Collections.Generic.List[string]
+$ownedByApp = New-Object System.Collections.Generic.List[string]
 
 if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
 
@@ -165,7 +174,22 @@ foreach ($rel in $files.Keys) {
             continue
         }
     } elseif ($Existing -and $before.ContainsKey($rel)) {
+        # Keeping a file is right; keeping it silently is not. A repo adopting the kit
+        # usually has older copies of the kit's own tooling, and -Existing used to leave
+        # every one of them frozen while stamping .kit-version at the current commit --
+        # so -Update then reported "already up to date" and the stale copies were never
+        # reachable again. Say which differ, and for the ones the kit owns outright put
+        # the current version beside them to merge.
         $kept.Add($rel)
+        if ((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $target).Hash) {
+            if (Test-Templated $source) {
+                # This app filled these in, or wrote its own. Differing is expected.
+                $ownedByApp.Add($rel)
+            } else {
+                if (-not $DryRun) { Copy-Item -LiteralPath $source -Destination "$target.kit-new" -Force }
+                $review.Add($rel)
+            }
+        }
         continue
     }
 
@@ -176,7 +200,11 @@ foreach ($rel in $files.Keys) {
     $copied.Add($rel)
 }
 
-foreach ($rel in $kept) { Write-Output "kept    $rel" }
+foreach ($rel in $kept) {
+    if ($review -contains $rel) { Write-Output "stale   $rel" }
+    elseif ($ownedByApp -contains $rel) { Write-Output "theirs  $rel" }
+    else { Write-Output "kept    $rel" }
+}
 foreach ($rel in $copied) { if ($added -contains $rel) { Write-Output "added   $rel" } else { Write-Output "copied  $rel" } }
 foreach ($rel in $review) { Write-Output "review  $rel.kit-new" }
 
@@ -199,9 +227,11 @@ function Write-Stamp() {
     Set-Content -LiteralPath $stamp -Value $lines -Encoding UTF8
 }
 
-# On -Update the stamp only moves once nothing is left to merge, so an unmerged
-# .kit-new is never forgotten: the next -Update offers it again.
-if (-not $DryRun -and (-not $Update -or $review.Count -eq 0)) { Write-Stamp }
+# The stamp only lands once nothing is left to merge, so an unmerged .kit-new is
+# never forgotten: the next run offers it again. On a fresh copy there is nothing to
+# merge, so it always lands. Stamping while copies are still stale would be the
+# worst outcome of all -- -Update would then answer "already up to date".
+if (-not $DryRun -and $review.Count -eq 0) { Write-Stamp }
 
 if (-not $DryRun -and -not $Update -and -not (Test-Path -LiteralPath (Join-Path $dest '.git'))) {
     git -C $dest init -b main --quiet
@@ -222,6 +252,28 @@ if ($DryRun) {
         }
         Write-Output "Review 'git diff' in that folder, then commit on a branch."
     }
+} elseif ($Existing) {
+    Write-Output "Added $($copied.Count) file(s) to $dest (stack: $Stack); kept $($kept.Count) the repo already had."
+    if ($review.Count) {
+        Write-Output ""
+        Write-Output "$($review.Count) kept file(s) the kit owns outright differ from it, so this repo is carrying"
+        Write-Output "older copies. The current versions sit beside them as .kit-new: merge them, delete the"
+        Write-Output ".kit-new, then run -Existing again to record the stamp."
+    }
+    if ($ownedByApp.Count) {
+        Write-Output ""
+        Write-Output "$($ownedByApp.Count) kept file(s) this app fills in for itself also differ. That is expected;"
+        Write-Output "compare them against $kit by hand only if something there looks out of date:"
+        foreach ($rel in $ownedByApp) { Write-Output "  $rel" }
+    }
+    if ($review.Count) {
+        Write-Output ""
+        Write-Output "No $stampName written yet: -Update would otherwise answer 'already up to date' while the"
+        Write-Output "stale copies above are still in place."
+    } else {
+        Write-Output "$stampName records the kit commit, so -Update works from here."
+    }
+    Write-Output "Review 'git status' and 'git diff' in that folder, then commit on a branch."
 } else {
     Write-Output "Kit copied to $dest (stack: $Stack). $stampName records the kit commit."
     Write-Output "Next: open Claude Code in that folder and run /kickoff."

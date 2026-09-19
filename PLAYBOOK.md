@@ -19,6 +19,7 @@ flowchart LR
 - **Product principles:** three to five promises every feature must keep, such as "ads never interrupt a task, no account, data leaves only by user export". They live in `CLAUDE.md`, so every session sees them, and every rule cites them.
 - **Store IDs now:** they're permanent after the first upload. Derive them from the product (`com.<product>.app`), never from your personal name.
 - **Tooling on day one (Phase 0):** CI, the format hook, `/verify`, `/release`, the version check, and branch protection. It's cheap on an empty repo and painful to retrofit.
+- **Store accounts on day one too.** Everything else in the roadmap is measured in days; account verification and Play's 14-day closed test are measured in weeks, and the ads-and-purchase item at the end cannot be tested without them. Start the paperwork while writing the first line of code, and write down the date the closed test has to begin.
 
 `new-app.ps1` + `/kickoff` do all of this.
 
@@ -43,12 +44,13 @@ flowchart LR
 
 | Phase | What | Why it's in this order |
 |---|---|---|
-| 0 Tooling | CI, hooks, skills, release pipeline, branch protection | Every later PR runs through it |
+| 0 Tooling | CI, hooks, skills, release pipeline, branch protection — **and the developer accounts** | Every later PR runs through it. The accounts are here because they are the only item measured in weeks: verification, then 14 continuous days of closed testing before Play will even take a production application |
 | 1 Foundations | Data model rules, migrations, dependency injection for tests, reliable writes, localization scaffolding | Features build on it, and it can't change cheaply once users have data |
 | 2 Features | In dependency order; backup/export after the last schema step | Each item's data exists before anything reads it |
-| 3 Store readiness | Names, icons, IDs, privacy policy, permission checks, packaging | Store accounts and reviews take weeks |
+| 3 Store readiness | Names, icons, IDs, privacy policy, licence, permission checks, packaging | The app has to look like a product before a reviewer sees it |
 | 4 Before release | Late scope, dated. Languages first, first-run walkthrough last | Later PRs translate as they go; the walkthrough shows finished features |
 | 5–7 Release | One phase per store, in the order they ship: Google Play, then the desktop stores, then Apple | One store's paperwork and review never hold up another |
+| 8 After launch | Vitals and reviews each release; the annual target-API bump; declarations that expire | Shipping starts a clock the roadmap has to hold, or the app quietly stops being listed |
 
 - Items cite rule IDs and get ticked in the PR that completes them.
 - Every decision that adds, moves, or drops an item gets its date inline.
@@ -72,8 +74,9 @@ One theme per PR. Bundle related items: one-checkbox PRs cost more review time t
 - SemVer `x.y.z+N`. CI refuses a PR whose version isn't above the last tag or has no changelog entry. Merging tags `vX.Y.Z` and drafts a GitHub Release with the artifact. Drafts keep artifacts private on a public repo.
 - Changelog entries are written for users: what they can now do, not class names.
 - `/release` also writes the store's release notes in every listing language, into `store/` (gitignored), where the listing text, graphics and data-safety files live too.
-- One-time store setup takes weeks. New personal Google Play accounts need a closed test (12 testers for 14 days) before production; confirm the current rule. Start it before the features are done.
-- The privacy policy lives in `docs/` on GitHub Pages. Update it in every PR that touches user data.
+- One-time store setup takes weeks, which is why the accounts are a Phase 0 item and not a Phase 5 one. Confirm the current production-access rule in the console: it is an application asking what the testers did, not a counter.
+- The privacy policy lives in `docs/` on GitHub Pages. Update it in every PR that touches user data. Pages publishes everything in `docs/`, so `docs/_config.yml` decides what is public and CI fails when a new doc is neither excluded nor declared.
+- **A bad release is fixed forward, never backward.** A published version code can't be reused, and reverting the merge produces a PR whose version is below the latest tag — which the version check refuses, wedging the pipeline in the one hour it matters. Halt the rollout, then ship a patch (`docs/RELEASING.md` → When a release is bad).
 
 ## The session is the unit of cost
 

@@ -21,6 +21,7 @@ template/                           Copied into every app
   docs/research/competitor-analysis.md
   scripts/version.sh                Version read, CI bump check, changelog notes (pubspec/package.json/VERSION)
   scripts/check_public_docs.sh      Fails when a doc is neither excluded from Pages nor declared public
+  scripts/rules.sh                  Rules nothing cites, and citations to rules that do not exist
   .claude/settings.json             Allow/deny lists
   .claude/skills/kickoff            Fill the placeholders, scaffold, first commit, GitHub repo (run once)
   .claude/skills/spec               Write a feature's rules before code

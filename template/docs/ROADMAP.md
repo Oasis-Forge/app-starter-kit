@@ -11,6 +11,8 @@ Set up before the first feature, while it's cheap.
 - [ ] The release workflow runs once by hand without secrets (unsigned artifacts, nothing published)
 - [ ] Privacy policy draft served by GitHub Pages
 - [ ] Competitor research (`docs/research/competitor-analysis.md`) and the first product rules (`docs/PRODUCT_RULES.md`)
+- [ ] **Start the store paperwork now, because it is measured in weeks while everything else is measured in days.** Create and verify the developer accounts, reserve `{{APP_ID}}` in each console, and create the app record. It is the only item here that cannot be hurried later: identity verification takes days, and a new personal Play account then needs a closed test running for 14 continuous days with at least 12 testers before it can even apply for production. Write the date that test must start to hit the launch you want, and put it here: <!-- closed test starts by: DATE -->
+  Everything in Phase 4 depends on it. The one-time purchase can only be tested against a real product in a real console, on a build installed from a real track.
 
 ## Phase 1: Foundations
 Groundwork every feature builds on. Settle everything that shapes stored data now, before real users have any.
@@ -46,14 +48,14 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 ## Phase 4: Before release
 <!-- Scope added after Phase 2, each item with its decision date. Languages come first, so every later PR adds all languages as it goes. The first-run walkthrough comes last, so it shows finished features. -->
 - [ ] **Languages** (LANG-1–LANG-6)
-- [ ] **Ads and the purchase that removes them** (ADS-1–ADS-9, PAY-1–PAY-6): banners, interstitials, and "Remove ads". The item that turns an offline app online, so do it after everything else has settled. It brings the network permission with it and rewrites the privacy policy, the data-safety form, the privacy labels, the first-run privacy page and the store listing in the same release (ADS-6). Ships with the one-time purchase, which needs a product in both consoles and can only be tested on an internal track — so the developer accounts have to exist first.
+- [ ] **Ads and the purchase that removes them** (ADS-1–ADS-9, PAY-1–PAY-6): banners, interstitials, and "Remove ads". The item that turns an offline app online, so do it after everything else has settled. It brings the network permission with it and rewrites the privacy policy, the data-safety form, the privacy labels, the first-run privacy page and the store listing in the same release (ADS-6). Ships with the one-time purchase, which needs a product in both consoles and can only be tested on an internal track — so this item is blocked on the Phase 0 store-paperwork item, not on anything in Phase 5. If the accounts aren't verified by the time you reach this, the code is finished and untestable.
 - [ ] **First-run setup and walkthrough** (RUN-3, RUN-4): last.
 
 ## Phase 5: Google Play
 <!-- One phase per store, in the order they ship, so one store's paperwork and review never hold up another. Delete the phases for stores {{APP_NAME}} doesn't target. -->
-- [ ] Finish the Android one-time setup in `docs/RELEASING.md`: signing, the developer account, contact details, payments profile, secrets.
+- [ ] Finish the Android one-time setup in `docs/RELEASING.md`: signing, contact details, payments profile, secrets. The account itself and the app record were done in Phase 0.
 - [ ] Internal testing from a release, including in-app products bought by licence testers.
-- [ ] Closed test: new personal developer accounts need at least 12 testers for 14 days before production access. Confirm the current rule in Play Console and start early.
+- [ ] Closed test finished and production access applied for. It should already be running: the 14 continuous days with at least 12 testers started in Phase 0, and the application asks what the testers did and what changed as a result, not just how many there were.
 - [ ] Store listing in every language from `store/play/` (text, screenshots, feature graphic, icon), privacy policy URL, data safety form, and `app-ads.txt`.
 - [ ] EU trader status, then apply for production and promote the release.
 
@@ -62,6 +64,13 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 
 ## Phase 7: Apple
 - [ ] iOS and macOS together: TestFlight from a release, App Store privacy labels, listings in every language, then App Review.
+
+## Phase 8: After launch
+Shipping is where an app starts costing attention rather than work. These recur; date each one as it is done, and treat a missed deadline as a bug.
+- [ ] Each release: read the store's crash and performance figures and the new reviews, before starting the next item. `docs/RELEASING.md` → When a release is bad.
+- [ ] **Target API level**, annually. Play stops showing an app to new devices when it falls behind, and the deadline is the same date every year for everyone. Put the date here: <!-- target API deadline: DATE -->
+- [ ] Declarations that expire or go stale: the data-safety form, the privacy labels, EU trader status, and the ad network's account details. Re-check each at the same time as the target API bump, and whenever a feature changes what is collected (ADS-6).
+- [ ] The support address is read by someone. Both stores publish one, so it receives mail whether or not it is watched.
 
 ## After v1
 <!-- Ideas deliberately left out of v1, one line. -->

@@ -9,6 +9,16 @@ Tags pushed by CI don't start other workflows, so any other platform's release w
 
 <!-- Delete the sections below for platforms {{APP_NAME}} doesn't target. -->
 
+## When a release is bad
+
+Every merged PR is a release, so there will be a bad one. Decide none of this while it is happening.
+
+1. **Stop the spread first.** In Play Console, halt the rollout on the track it is on. A version code that has been published can never be reused or re-uploaded, and an app cannot be rolled back to an earlier release: the only way out is a higher version going out.
+2. **Fix forward, never backward.** `git revert` the merge and open a PR, and CI refuses it — the reverted tree's version is at or below the latest `vX.Y.Z` tag, which is exactly what `scripts/version.sh check` exists to catch. That is a stuck pipeline during the one hour it matters. If the fix *is* a revert, revert on a branch off a freshly pulled `main` **and** run `/release patch` on it, so the undo is itself a release with its own version and changelog entry.
+3. **Leave the tag and the draft release alone.** The tag records what shipped, and CI compares every later PR against it. Deleting it makes the next version check compare against the wrong thing.
+4. **Say what happened in the changelog**, in the same user-facing words as everything else: what was wrong and what the new version does about it.
+5. **Read the crash before guessing.** Play symbolicates with the deobfuscation mapping the release workflow uploads alongside the bundle, so the stack traces in Play Console are readable.
+
 ## GitHub secrets and variables
 
 Add them in GitHub → Settings → Secrets and variables → Actions, or with `gh secret set NAME` (it prompts for the value).

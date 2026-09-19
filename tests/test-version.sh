@@ -18,7 +18,8 @@ check(){ if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (got '$2', wanted '$3')"
 
 # A repo with a real origin, so `check` exercises the tag lookup for real.
 new_repo() {
-  local name=$1 dir="$work/$name"
+  local name=$1
+  local dir="$work/$name"
   rm -rf "$dir" "$work/$name.git"
   git init --quiet --bare "$work/$name.git"
   git init --quiet -b main "$dir"
@@ -67,12 +68,16 @@ echo ""
 echo "check"
 # The whole point: --depth=1 is a property of the fetch, not the refspec, so running
 # this against a full clone used to write .git/shallow and truncate the repository.
+printf 'name: app\nversion: 1.0.0+1\n' > "$d/pubspec.yaml"
 git -C "$d" add -A > /dev/null
 git -C "$d" commit --quiet -m one
+git -C "$d" tag v1.0.0
 git -C "$d" commit --quiet --allow-empty -m two
 git -C "$d" commit --quiet --allow-empty -m three
+printf 'name: app\nversion: 1.1.0+9\n' > "$d/pubspec.yaml"
+git -C "$d" add -A > /dev/null
+git -C "$d" commit --quiet -m four
 git -C "$d" push --quiet origin main
-git -C "$d" tag v1.0.0 HEAD~2
 git -C "$d" push --quiet origin v1.0.0
 before=$(git -C "$d" rev-list --count HEAD)
 (cd "$d" && bash version.sh check > /dev/null) && ok 'a raised version passes' || bad 'a raised version passes'

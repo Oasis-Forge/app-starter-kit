@@ -25,12 +25,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # tests/test-add-messages.sh drives a Dart tool, and skips itself when there is
+      # no SDK. Without this the job would pass by not running it.
+      - uses: dart-lang/setup-dart@v1
+
       - name: Shellcheck
         run: |
           shopt -s nullglob
           files=(template/scripts/*.sh stacks/*/files/tool/*.sh tests/*.sh)
           printf 'checking %s\n' "${files[@]}"
           shellcheck --severity=warning "${files[@]}"
+
+      # A Dart tool the kit ships has to at least analyse cleanly.
+      - name: Analyze the stack tools
+        run: |
+          shopt -s nullglob
+          for f in stacks/*/files/tool/*.dart; do
+            echo "::group::$f"
+            dart analyze --fatal-infos "$f"
+            echo "::endgroup::"
+          done
 
       # tests/test-*.sh each exit non-zero on the first failed check.
       - name: Run the shell tests

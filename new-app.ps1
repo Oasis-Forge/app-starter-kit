@@ -16,6 +16,11 @@ Re-copies the kit files that changed since this project was made. Files /kickoff
 filled in land beside the original as <file>.kit-new, to merge by hand.
 
 .EXAMPLE
+.\new-app.ps1 -Name an-established-app -Stack flutter -Refresh
+Updates only the kit files that app already has, and adds nothing. For an app the
+kit never made, or one that wants the tooling current without the rest of the kit.
+
+.EXAMPLE
 .\new-app.ps1 -Name habit-tracker -Stack flutter -DryRun
 Prints what would be copied and writes nothing.
 #>
@@ -25,6 +30,7 @@ param(
     [string] $ProjectsRoot = 'D:\Desktop\projects',
     [switch] $Existing,
     [switch] $Update,
+    [switch] $Refresh,
     [switch] $DryRun
 )
 $ErrorActionPreference = 'Stop'
@@ -35,7 +41,20 @@ $stampName = '.kit-version'
 $stamp = Join-Path $dest $stampName
 $sep = [char]92
 
-if ($Existing -and $Update) { throw 'Use -Existing to adopt the kit, or -Update to refresh it, not both.' }
+$modes = @($Existing, $Update, $Refresh) | Where-Object { $_ }
+if ($modes.Count -gt 1) {
+    throw 'Pick one: -Existing adopts the kit, -Update refreshes a project made from it, -Refresh updates only the kit files a project already has.'
+}
+
+# -Refresh is for an app the kit never made, or one that has drifted far enough that
+# the rest of the kit is not wanted: bring the kit's own tooling up to date and add
+# nothing. An established app usually wants exactly this and nothing else -- -Existing
+# would also drop in a docs set and a CI workflow it has its own versions of.
+if ($Refresh) {
+    if (-not (Test-Path -LiteralPath $stamp) -and -not $PSBoundParameters.ContainsKey('Stack')) {
+        throw "No $stampName in $dest to read the stack from, so pass -Stack (the wrong one compares against the wrong files)."
+    }
+}
 
 # -Update reads the stack, the kit commit and the copied paths from the stamp the
 # first copy left behind.
@@ -59,13 +78,17 @@ if ($Update) {
     }
 }
 
+if ($Refresh -and (Test-Path -LiteralPath $stamp) -and -not $PSBoundParameters.ContainsKey('Stack')) {
+    $Stack = (Select-String -LiteralPath $stamp -Pattern '^stack\s*=\s*(.+)$').Matches.Groups[1].Value.Trim()
+}
+
 $overlay = Join-Path (Join-Path (Join-Path $kit 'stacks') $Stack) 'files'
 if ($Stack -ne 'none' -and -not (Test-Path -LiteralPath $overlay)) {
     $stacksDir = Join-Path $kit 'stacks'
     $known = if (Test-Path -LiteralPath $stacksDir) { (Get-ChildItem -LiteralPath $stacksDir -Directory).Name -join ', ' } else { '(none found)' }
     throw "Unknown stack '$Stack'. Known: none, $known"
 }
-if ($Existing -or $Update) {
+if ($Existing -or $Update -or $Refresh) {
     if (-not (Test-Path -LiteralPath $dest)) { throw "$dest doesn't exist" }
 } elseif (Test-Path -LiteralPath $dest) {
     throw "$dest already exists. Use -Existing to add the kit to it, or -Update to refresh its kit tooling."
@@ -190,7 +213,11 @@ foreach ($rel in $files.Keys) {
             $review.Add($rel)
             continue
         }
-    } elseif ($Existing -and $before.ContainsKey($rel)) {
+    } elseif ($Refresh -and -not $before.ContainsKey($rel)) {
+        # The whole point: an app that wants the kit's tooling current without also
+        # acquiring its docs set, its CI workflow and a second roadmap.
+        continue
+    } elseif (($Existing -or $Refresh) -and $before.ContainsKey($rel)) {
         # Keeping a file is right; keeping it silently is not. A repo adopting the kit
         # usually has older copies of the kit's own tooling, and -Existing used to leave
         # every one of them frozen while stamping .kit-version at the current commit --
@@ -269,14 +296,18 @@ if ($DryRun) {
         }
         Write-Output "Review 'git diff' in that folder, then commit on a branch."
     }
-} elseif ($Existing) {
-    Write-Output "Added $($copied.Count) file(s) to $dest (stack: $Stack); kept $($kept.Count) the repo already had."
+} elseif ($Existing -or $Refresh) {
+    if ($Refresh) {
+        Write-Output "Checked $($kept.Count) kit file(s) this repo already has (stack: $Stack). Nothing was added."
+    } else {
+        Write-Output "Added $($copied.Count) file(s) to $dest (stack: $Stack); kept $($kept.Count) the repo already had."
+    }
     if ($review.Count) {
         Write-Output ""
         Write-Output "$($review.Count) kept file(s) differ from the kit's. Its versions sit beside them as .kit-new."
         Write-Output "Read both before merging: a file with no placeholder in it can still hold this app's own"
         Write-Output "settings -- a version lookup pointed into a subdirectory, a Dependabot directory -- and"
-        Write-Output "nothing here can see that. Merge what belongs, delete the .kit-new, then run -Existing"
+        Write-Output "nothing here can see that. Merge what belongs, delete the .kit-new, then run the same"
         Write-Output "again to record the stamp."
     }
     if ($ownedByApp.Count) {
@@ -288,7 +319,7 @@ if ($DryRun) {
     if ($review.Count) {
         Write-Output ""
         Write-Output "No $stampName written yet: -Update would otherwise answer 'already up to date' while the"
-        Write-Output "stale copies above are still in place."
+        Write-Output "files above are still waiting to be read."
     } else {
         Write-Output "$stampName records the kit commit, so -Update works from here."
     }

@@ -8,7 +8,7 @@ The docs, Claude Code setup, and GitHub workflows that took a real app from an e
 CLAUDE.md                           Conventions for working on the kit itself (not the same as an app's)
 skills/new-app                      Personal skill: "start a new app" → create the project → /kickoff
 PLAYBOOK.md                         The flow: kickoff → research → rules → roadmap → build loop → release
-new-app.ps1                         Copies the kit into D:\Desktop\projects\<name>, and -Update refreshes an app
+new-app.ps1                         Copies the kit in; -Existing adopts, -Refresh updates tooling only, -Update follows the kit
 tests/                              Checks the kit's own tooling against the ways it has been wrong before
 .github/workflows/ci.yml            Runs those tests, shellchecks the scripts, parses every template workflow
 template/                           Copied into every app
@@ -80,6 +80,19 @@ It's a personal skill rather than a project one because it has to be available b
 | `GITHUB_OWNER`, `REPO` | your-github-handle, habit-tracker |
 | `DATE`, `DATE_ISO` | 14 September 2026, 2026-09-14 |
 | `CMD_*` | Commands from the stack's `docs/STACK_NOTES.md` → Fill-ins |
+
+## Keep an established app's tooling current
+
+For an app the kit never made, or one that wants the fixed tooling without the rest of the kit:
+
+```powershell
+.\new-app.ps1 -Name an-established-app -Stack flutter -Refresh -DryRun
+.\new-app.ps1 -Name an-established-app -Stack flutter -Refresh
+```
+
+It looks only at kit files the repo **already has**, and adds nothing. No docs set, no CI workflow, no second roadmap. Differences land as `.kit-new` beside the file, with the same rule as below: **read both, then merge by hand**. Once none are left, run it again and `.kit-version` lands, so `-Update` works from then on.
+
+This is usually what an established app wants. Adopting the kit into one that already has its own docs and workflows is the exception, not the default.
 
 ## Adopt the kit into an app that already exists
 

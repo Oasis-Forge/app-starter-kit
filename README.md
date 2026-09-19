@@ -15,9 +15,12 @@ template/                           Copied into every app
   docs/ROADMAP.md                   Phases 0–5 with the items every app needs
   docs/PRODUCT_RULES.md             They do → Learn → rules with stable IDs; starter rules
   docs/RELEASING.md                 Versioning, secrets, branch protection, store one-time setup
-  docs/privacy-policy.md            Store-ready policy, served by GitHub Pages
+  docs/privacy-policy.md            Store-ready policy, the one file GitHub Pages publishes
+  docs/_config.yml                  Keeps the working docs off the domain the store listing points at
+  docs/STACK_NOTES.md               Skeleton for a stack the kit has no overlay for; the overlay replaces it
   docs/research/competitor-analysis.md
   scripts/version.sh                Version read, CI bump check, changelog notes (pubspec/package.json/VERSION)
+  scripts/check_public_docs.sh      Fails when a doc is neither excluded from Pages nor declared public
   .claude/settings.json             Allow/deny lists
   .claude/skills/kickoff            Fill the placeholders, scaffold, first commit, GitHub repo (run once)
   .claude/skills/spec               Write a feature's rules before code

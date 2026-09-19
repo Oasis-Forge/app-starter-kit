@@ -44,6 +44,16 @@ The app isn't directed at children under 13.
 
 Changes are published on this page with a new effective date.
 
+## Who publishes the app
+
+<!-- The publisher name exactly as it appears in the store listing, never a personal
+name (`docs/RELEASING.md` → Payments profile). A reviewer looks for this. -->
+
 ## Contact
 
-Questions: open an issue at https://github.com/{{GITHUB_OWNER}}/{{REPO}}/issues.
+<!-- The dedicated support address from the store listing. Play publishes it on the
+listing and the developer's email on every app, so withholding it here buys no
+privacy it hasn't already spent -- it just leaves the policy without the contact a
+store reviewer expects. -->
+
+You can also open an issue at https://github.com/{{GITHUB_OWNER}}/{{REPO}}/issues.

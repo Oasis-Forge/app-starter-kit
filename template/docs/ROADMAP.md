@@ -20,6 +20,7 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 - [ ] Reliable writes: write first, then change state; on failure roll back and show an error.
 - [ ] Localization scaffolding: every UI string in the message files from the start, even with one language.
 - [ ] Schema step: record rules on every table: UUIDs, timestamps, soft delete (REC-1, REC-2, DEL-1).
+- [ ] The stored shapes that can't change once users have data: integer money in thousandths if the app handles money (MONEY-1), a picked date as a local calendar date that survives a time-zone change (DATE-1), and built-in items stored by ID with translatable labels rather than stored text (DATA-1).
 - [ ] <!-- Schema steps from "Roadmap impact" in PRODUCT_RULES.md, each with its rule IDs. -->
 - [ ] Tests: model round-trip, each migration step, the core calculation rules, widget tests for the main flows.
 - [ ] Platform decision: which targets ship in v1 and which come after (dated).
@@ -37,7 +38,8 @@ Groundwork every feature builds on. Settle everything that shapes stored data no
 - [ ] Display name "{{APP_NAME}}" on every platform: launcher label, bundle names, window titles.
 - [ ] Launcher icons and splash screen, generated from one committed source.
 - [ ] Store IDs, permanent after the first upload and free of personal names: `{{APP_ID}}`.
-- [ ] Privacy policy published, and updated for every feature that touches user data.
+- [ ] Privacy policy published, and updated for every feature that touches user data. Decide how it is served: GitHub Pages needs the repo to be public, or a paid plan (`docs/RELEASING.md` → Privacy policy).
+- [ ] `LICENSE` decided and committed. With no file the code is "all rights reserved", which is a choice worth making rather than defaulting into — and a store that redistributes the build, Flathub among them, needs one that permits it.
 - [ ] The release build declares only the permissions the store listing admits to; the release workflow dumps the built artifact's permissions and fails on any it doesn't expect (RUN-2). Write the list against a real build, not from memory, and check both directions: a permission the app needs and lost is as much a bug as one a plugin added.
 - [ ] Desktop packaging, if targeted: macOS sandbox entitlements, Windows MSIX, Linux Flatpak.
 

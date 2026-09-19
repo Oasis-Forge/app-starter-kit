@@ -118,6 +118,35 @@ Check 'no .kit-new is written for it' (-not (Test-Path "$eol\scripts\version.sh.
 Check 'so the stamp still lands' (Test-Path "$eol\.kit-version")
 Check "and the repo's own line endings are left alone" ([System.IO.File]::ReadAllText((Join-Path $eol 'scripts\version.sh')) -eq $flipped)
 
+# An established app usually wants the kit's tooling current and nothing else. Run
+# -Existing on one and it also acquires a docs set, a CI workflow and a second
+# roadmap it has its own versions of, which is why hisscore took three files by hand
+# rather than the eighteen -Existing offered.
+Write-Output ""
+Write-Output "-Refresh updates what is there and adds nothing"
+$ref = Join-Path $WorkRoot 'refresh'
+New-Item -ItemType Directory -Force -Path (Join-Path $ref 'scripts') | Out-Null
+Set-Content "$ref\scripts\version.sh" '# an older copy' -Encoding UTF8
+& $script -Name refresh -Stack flutter -ProjectsRoot $WorkRoot -Refresh | Out-Null
+Check 'a kit file the repo lacks is not added' (-not (Test-Path "$ref\docs\ROADMAP.md"))
+Check 'and neither is its CI workflow' (-not (Test-Path "$ref\.github\workflows\ci.yml"))
+Check 'the one it has is left in place' (Has "$ref\scripts\version.sh" 'an older copy')
+Check "the kit's version lands beside it" (Has "$ref\scripts\version.sh.kit-new" 'One version tool')
+Check 'no stamp while it is unread' (-not (Test-Path "$ref\.kit-version"))
+
+Copy-Item "$ref\scripts\version.sh.kit-new" "$ref\scripts\version.sh" -Force
+Remove-Item "$ref\scripts\version.sh.kit-new" -Force
+& $script -Name refresh -Stack flutter -ProjectsRoot $WorkRoot -Refresh | Out-Null
+Check 'once read, the stamp lands' (Test-Path "$ref\.kit-version")
+Check 'and it still added nothing' (-not (Test-Path "$ref\docs\ROADMAP.md"))
+Check 'the stack comes from the stamp next time' (-not (Throws { & $script -Name refresh -ProjectsRoot $WorkRoot -Refresh }))
+
+Check '-Refresh with no stamp and no -Stack is refused' (Throws {
+    New-Item -ItemType Directory -Force -Path (Join-Path $WorkRoot 'bare') | Out-Null
+    & $script -Name bare -ProjectsRoot $WorkRoot -Refresh
+})
+Check 'two modes at once are refused' (Throws { & $script -Name refresh -ProjectsRoot $WorkRoot -Refresh -Update })
+
 # Flutter's build/ has Gradle transform paths past the 260-character limit. Walking
 # the whole destination hit them and threw, so -Existing died on the first real app
 # it was pointed at -- the case it exists for.

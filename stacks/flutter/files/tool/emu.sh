@@ -5,7 +5,10 @@
 #   bash tool/emu.sh <command> [args]
 #
 #   start              run the emulator (as a background command: it lasts as
-#                      long as the emulator does)
+#                      long as the emulator does). EMU_ARGS passes flags through,
+#                      e.g. EMU_ARGS=-no-snapshot-load to cold-boot a wedged one;
+#                      AVD picks a device other than Medium_Phone
+#   stop               shut the emulator down
 #   ready              wait until it has booted
 #   save <name>        snapshot the whole emulator: data, language, theme,
 #                      dark mode, Downloads
@@ -31,9 +34,32 @@ app="{{APP_ID}}"
 sdk=${ANDROID_HOME:-${LOCALAPPDATA:-$HOME}/Android/Sdk}
 if command -v cygpath >/dev/null; then sdk=$(cygpath -u "$sdk"); fi
 
+# Everything between the shebang and the first line of code, so adding a command to
+# the header cannot leave the help text describing an older set. It used to print a
+# fixed line range, which started mid-sentence and stopped one line short of `shot`.
 usage() {
-  sed -n '3,25s/^# \{0,1\}//p' "$0" >&2
+  sed -n '2,/^[^#]/{ /^#/{ s/^# \{0,1\}//; p; } }' "$0" >&2
   exit 64
+}
+
+# adb obeys ANDROID_SERIAL for every subcommand, `emu` included, so pinning it once
+# keeps a phone that happens to be plugged in out of a test run -- and turns "more
+# than one device" from a silent wrong target into a question.
+use_device() {
+  [ -n "${ANDROID_SERIAL:-}" ] && return 0
+  local found count
+  found=$(adb devices | awk '$2 == "device" && $1 ~ /^emulator-/ { print $1 }')
+  count=$(printf '%s' "$found" | grep -c . || true)
+  if [ "$count" -eq 0 ]; then
+    echo "No booted emulator. Run 'bash tool/emu.sh start' in the background, then 'ready'." >&2
+    exit 1
+  fi
+  if [ "$count" -gt 1 ]; then
+    echo "More than one emulator is running. Set ANDROID_SERIAL to one of:" >&2
+    printf '  %s\n' $found >&2
+    exit 1
+  fi
+  export ANDROID_SERIAL=$found
 }
 
 start() {
@@ -43,26 +69,55 @@ start() {
   fi
   local emulator=$sdk/emulator/emulator
   if [ -f "$emulator.exe" ]; then emulator=$emulator.exe; fi
-  exec "$emulator" -avd "${AVD:-Medium_Phone}" >/dev/null 2>&1
+  # EMU_ARGS passes flags through, e.g. EMU_ARGS=-no-snapshot-load to cold-boot
+  # after a snapshot load has wedged the device.
+  # shellcheck disable=SC2086 # a list of flags, deliberately split
+  exec "$emulator" -avd "${AVD:-Medium_Phone}" -no-boot-anim ${EMU_ARGS:-} >/dev/null 2>&1
 }
 
 ready() {
-  adb wait-for-device
+  adb -e wait-for-device
+  use_device
   until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do
     sleep 2
   done
   echo "Booted."
 }
 
+# `adb emu` prints OK or KO and exits 0 either way, so a refused save looked exactly
+# like a successful one -- and the snapshot the drill relies on to put the user's
+# emulator back was not there when it came time to load it.
+snapshot() {
+  local action=$1 name=$2 out
+  out=$(adb emu avd snapshot "$action" "$name" 2>&1 || true)
+  printf '%s\n' "$out"
+  if printf '%s' "$out" | grep -qiE '^(KO|error)'; then
+    echo "Snapshot $action of \"$name\" failed, so nothing was saved or restored." >&2
+    exit 1
+  fi
+}
+
 # Elements on screen, tab separated: label, x, y, flags. The status and
 # navigation bars are left out; so is anything with no label that can't be
 # tapped, typed into, or scrolled.
 elements() {
+  # Delete the previous dump first. Without this, three failed attempts still left
+  # the last successful ui.xml on the device and `screen` printed it with exit 0 --
+  # so a tap landed on a screen that was no longer showing, or a control was
+  # reported missing from a screen that was never read. The failure happens exactly
+  # when something is animating, which is exactly after a tap or a launch.
+  adb shell rm -f /sdcard/ui.xml >/dev/null 2>&1 || true
+  local dumped=
   for _ in 1 2 3; do
     # Fails with "could not get idle state" while something animates.
-    adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && break
+    adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && { dumped=1; break; }
     sleep 1
   done
+  if [ -z "$dumped" ]; then
+    echo "Could not read the screen: uiautomator would not settle after three tries." >&2
+    echo "Something is still animating. Wait a moment and run 'screen' again." >&2
+    exit 1
+  fi
   adb exec-out cat /sdcard/ui.xml | tr '>' '\n' | awk '
     function attr(name) {
       if (!match($0, " " name "=\"[^\"]*\"")) return ""
@@ -162,13 +217,21 @@ scroll() {
 
 command=${1:-}
 if [ $# -gt 0 ]; then shift; fi
+
+# Every command but these needs a device, and needs it to be the right one.
+case $command in
+start | '' | -h | --help | help) ;;
+*) use_device ;;
+esac
+
 case $command in
 start) start ;;
+stop) adb emu kill && echo "Stopping the emulator." ;;
 ready) ready ;;
-save) adb emu avd snapshot save "${1:?needs a name}" ;;
-load) adb emu avd snapshot load "${1:?needs a name}" && adb wait-for-device ;;
+save) snapshot save "${1:?needs a name}" ;;
+load) snapshot load "${1:?needs a name}" && adb wait-for-device ;;
 snapshots) adb emu avd snapshot list ;;
-forget) adb emu avd snapshot delete "${1:?needs a name}" ;;
+forget) snapshot delete "${1:?needs a name}" ;;
 install) adb install -r "${1:?needs an apk}" | tail -1 ;;
 launch) adb shell am start -S -n "$app/.MainActivity" >/dev/null && echo "Launched." ;;
 screen) screen ;;

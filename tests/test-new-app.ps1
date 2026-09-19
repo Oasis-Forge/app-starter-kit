@@ -61,6 +61,26 @@ Check 'settings.json still has the hook' (Has "$adopted\.claude\settings.json" '
 $readme = (Get-Content "$adopted\README.md" -Raw).Trim([char]0xFEFF, ' ', "`r", "`n", "`t")
 Check "the repo's own file is kept (found '$readme')" ($readme -eq "# the app's own readme")
 
+# GitHub's Windows runners set TEMP to an 8.3 short path, and the provider hands the
+# expanded form back, so cutting the root off an enumerated path by its length left
+# every relative key mangled: nothing looked "already present" and -Existing
+# overwrote the repo's own README.md with the template's.
+Write-Output ""
+Write-Output "-Existing when the root is spelled differently (8.3 short path)"
+$shortRoot = $null
+try { $shortRoot = (New-Object -ComObject Scripting.FileSystemObject).GetFolder($WorkRoot).ShortPath } catch { }
+if ($shortRoot -and $shortRoot -ne $WorkRoot) {
+    $shortApp = Join-Path $shortRoot 'shortpath'
+    New-Item -ItemType Directory -Force -Path $shortApp | Out-Null
+    Set-Content "$shortApp\README.md" '# the app''s own readme' -Encoding UTF8
+    & $script -Name shortpath -Stack flutter -ProjectsRoot $shortRoot -Existing | Out-Null
+    $short = (Get-Content "$shortApp\README.md" -Raw).Trim([char]0xFEFF, ' ', "`r", "`n", "`t")
+    Check "the repo's own file survives it (found '$short')" ($short -eq "# the app's own readme")
+    Check 'the stack overlay still lands' (Has "$shortApp\.github\workflows\ci.yml" 'subosito/flutter-action')
+} else {
+    Write-Output "  skip  8.3 short names are not enabled on this volume"
+}
+
 # -Update must move only what the kit changed, and never undo /kickoff.
 Write-Output ""
 Write-Output "-Update"

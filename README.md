@@ -5,6 +5,7 @@ The docs, Claude Code setup, and GitHub workflows that took a real app from an e
 ## What's in it
 
 ```
+CLAUDE.md                           Conventions for working on the kit itself (not the same as an app's)
 PLAYBOOK.md                         The flow: kickoff → research → rules → roadmap → build loop → release
 new-app.ps1                         Copies the kit into D:\Desktop\projects\<name>, and -Update refreshes an app
 tests/                              Checks the kit's own tooling against the ways it has been wrong before

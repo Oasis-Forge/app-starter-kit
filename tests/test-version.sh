@@ -17,9 +17,17 @@ bad()  { echo "  FAIL  $1"; failures=$((failures + 1)); }
 check(){ if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (got '$2', wanted '$3')"; fi }
 
 # A repo with a real origin, so `check` exercises the tag lookup for real.
+#
+# Always call this through repo(). If it half-fails, $dir is empty, and every
+# `git -C "$dir" ...` below then runs against the CURRENT directory instead --
+# which is this kit's own checkout. That is not hypothetical: an earlier version
+# of this file lost `local dir=` to an unbound-variable error and deleted the
+# kit repo's origin remote.
 new_repo() {
-  local name=$1
+  local name=${1:-}
+  [ -n "$name" ] || return 1
   local dir="$work/$name"
+  [ -n "$work" ] || return 1
   rm -rf "$dir" "$work/$name.git"
   git init --quiet --bare "$work/$name.git"
   git init --quiet -b main "$dir"
@@ -31,11 +39,24 @@ new_repo() {
   echo "$dir"
 }
 
+# Refuses to hand back anything that isn't a real directory under $work, so a
+# broken fixture stops the run instead of aiming git at the current repository.
+repo() {
+  local dir
+  dir=$(new_repo "$1") || true
+  case "$dir" in
+    "$work"/*) ;;
+    *) echo "  FAIL  could not build the fixture '$1'; stopping before git touches this repo" >&2; exit 1 ;;
+  esac
+  [ -d "$dir" ] || { echo "  FAIL  fixture '$1' is not a directory; stopping" >&2; exit 1; }
+  echo "$dir"
+}
+
 echo "version.sh in $kit"
 echo ""
 echo "reading the version"
 
-d=$(new_repo pubspec)
+d=$(repo pubspec)
 printf 'name: app\nversion: 1.1.0+9\n' > "$d/pubspec.yaml"
 check 'pubspec with a build number: name'  "$(cd "$d" && bash version.sh name)"  '1.1.0'
 check 'pubspec with a build number: build' "$(cd "$d" && bash version.sh build)" '9'
@@ -46,12 +67,12 @@ printf 'name: app\nversion: 1.1.0\n' > "$d/pubspec.yaml"
 check 'pubspec without a build number: name'  "$(cd "$d" && bash version.sh name)"  '1.1.0'
 check 'pubspec without a build number: build' "$(cd "$d" && bash version.sh build)" '0'
 
-d2=$(new_repo npm)
+d2=$(repo npm)
 printf '{\n  "name": "app",\n  "version": "1.1.0"\n}\n' > "$d2/package.json"
 check 'package.json: name'  "$(cd "$d2" && bash version.sh name)"  '1.1.0'
 check 'package.json: build' "$(cd "$d2" && bash version.sh build)" '0'
 
-d3=$(new_repo plain)
+d3=$(repo plain)
 printf '1.1.0+9\n' > "$d3/VERSION"
 check 'VERSION file: name'  "$(cd "$d3" && bash version.sh name)"  '1.1.0'
 check 'VERSION file: build' "$(cd "$d3" && bash version.sh build)" '9'
@@ -94,12 +115,12 @@ printf 'name: app\nversion: 1.1.0+9\n' > "$d/pubspec.yaml"
 # Before /kickoff creates the GitHub repo there is no origin. That is "nothing is
 # released yet", not a crash: set -e used to abort on the command substitution and
 # print git's own fatal with exit 128, so no ::error:: annotation was ever produced.
-d4=$(new_repo noremote)
+d4=$(repo noremote)
 git -C "$d4" remote remove origin
 printf 'name: app\nversion: 1.1.0+9\n' > "$d4/pubspec.yaml"
 (cd "$d4" && bash version.sh check > /dev/null 2>&1) && ok 'no origin yet is not an error' || bad 'no origin yet is not an error'
 
-d5=$(new_repo unreachable)
+d5=$(repo unreachable)
 git -C "$d5" remote set-url origin "$work/does-not-exist.git"
 printf 'name: app\nversion: 1.1.0+9\n' > "$d5/pubspec.yaml"
 out=$(cd "$d5" && bash version.sh check 2>&1); code=$?

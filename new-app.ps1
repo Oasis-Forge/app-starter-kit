@@ -111,8 +111,25 @@ function Get-RelativeFiles([string] $root) {
 
 # A file the kit still has {{PLACEHOLDERS}} in is one /kickoff rewrote with this app's
 # name, commands and version, so -Update must never overwrite the app's copy.
+#
+# The reverse does not hold. A file with no placeholder in it can still carry this
+# app's own settings -- a version lookup pointed into a subdirectory, a Dependabot
+# `directory:` -- and nothing here can see that. "No placeholders" means "the kit
+# wrote every line of its copy", never "safe to overwrite".
 function Test-Templated([string] $path) {
     return [bool](Select-String -LiteralPath $path -Pattern '\{\{[A-Z_]+\}\}' -Quiet)
+}
+
+# Content, ignoring how the lines end. These files cross between the kit and an app
+# through git's `text=auto`, so one side holds CRLF and the other LF for text that is
+# character for character the same. Comparing the bytes called four of seven files in
+# a real repo stale when nothing about them had changed, which is how a check earns
+# being ignored. ReadAllText also drops a byte-order mark, so that cannot differ either.
+function Test-SameContent([string] $a, [string] $b) {
+    if (-not (Test-Path -LiteralPath $a) -or -not (Test-Path -LiteralPath $b)) { return $false }
+    $left = [System.IO.File]::ReadAllText($a).Replace("`r`n", "`n")
+    $right = [System.IO.File]::ReadAllText($b).Replace("`r`n", "`n")
+    return $left -eq $right
 }
 
 $sources = @(Join-Path $kit 'template')
@@ -177,11 +194,11 @@ foreach ($rel in $files.Keys) {
         # Keeping a file is right; keeping it silently is not. A repo adopting the kit
         # usually has older copies of the kit's own tooling, and -Existing used to leave
         # every one of them frozen while stamping .kit-version at the current commit --
-        # so -Update then reported "already up to date" and the stale copies were never
-        # reachable again. Say which differ, and for the ones the kit owns outright put
-        # the current version beside them to merge.
+        # so -Update then reported "already up to date" and those copies were never
+        # reachable again. Say which differ, and for the ones the kit wrote every line
+        # of, put its version beside them to read against.
         $kept.Add($rel)
-        if ((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $target).Hash) {
+        if (-not (Test-SameContent $source $target)) {
             if (Test-Templated $source) {
                 # This app filled these in, or wrote its own. Differing is expected.
                 $ownedByApp.Add($rel)
@@ -201,7 +218,7 @@ foreach ($rel in $files.Keys) {
 }
 
 foreach ($rel in $kept) {
-    if ($review -contains $rel) { Write-Output "stale   $rel" }
+    if ($review -contains $rel) { Write-Output "differs $rel" }
     elseif ($ownedByApp -contains $rel) { Write-Output "theirs  $rel" }
     else { Write-Output "kept    $rel" }
 }
@@ -256,9 +273,11 @@ if ($DryRun) {
     Write-Output "Added $($copied.Count) file(s) to $dest (stack: $Stack); kept $($kept.Count) the repo already had."
     if ($review.Count) {
         Write-Output ""
-        Write-Output "$($review.Count) kept file(s) the kit owns outright differ from it, so this repo is carrying"
-        Write-Output "older copies. The current versions sit beside them as .kit-new: merge them, delete the"
-        Write-Output ".kit-new, then run -Existing again to record the stamp."
+        Write-Output "$($review.Count) kept file(s) differ from the kit's. Its versions sit beside them as .kit-new."
+        Write-Output "Read both before merging: a file with no placeholder in it can still hold this app's own"
+        Write-Output "settings -- a version lookup pointed into a subdirectory, a Dependabot directory -- and"
+        Write-Output "nothing here can see that. Merge what belongs, delete the .kit-new, then run -Existing"
+        Write-Output "again to record the stamp."
     }
     if ($ownedByApp.Count) {
         Write-Output ""

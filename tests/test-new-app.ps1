@@ -100,6 +100,24 @@ Remove-Item "$stale\scripts\version.sh.kit-new" -Force
 & $script -Name stale -Stack flutter -ProjectsRoot $WorkRoot -Existing | Out-Null
 Check 'once merged, the stamp lands' (Test-Path "$stale\.kit-version")
 
+# These files cross between the kit and an app through git's text=auto, so identical
+# text arrives with different line endings. Hashing the bytes called four of seven
+# files in a real repo stale when nothing about them had changed, and a check that
+# cries wolf four times in seven is one nobody reads.
+Write-Output ""
+Write-Output "-Existing when a kept file differs only in line endings"
+$eol = Join-Path $WorkRoot 'eol'
+New-Item -ItemType Directory -Force -Path (Join-Path $eol 'scripts') | Out-Null
+$kitVersion = [System.IO.File]::ReadAllText((Join-Path $kit 'template\scripts\version.sh'))
+# Same characters, opposite line endings.
+$flipped = if ($kitVersion.Contains("`r`n")) { $kitVersion.Replace("`r`n", "`n") } else { $kitVersion.Replace("`n", "`r`n") }
+[System.IO.File]::WriteAllText((Join-Path $eol 'scripts\version.sh'), $flipped)
+$out = & $script -Name eol -Stack flutter -ProjectsRoot $WorkRoot -Existing
+Check 'it is not reported as differing' (-not ($out -match 'differs\s+scripts'))
+Check 'no .kit-new is written for it' (-not (Test-Path "$eol\scripts\version.sh.kit-new"))
+Check 'so the stamp still lands' (Test-Path "$eol\.kit-version")
+Check "and the repo's own line endings are left alone" ([System.IO.File]::ReadAllText((Join-Path $eol 'scripts\version.sh')) -eq $flipped)
+
 # Flutter's build/ has Gradle transform paths past the 260-character limit. Walking
 # the whole destination hit them and threw, so -Existing died on the first real app
 # it was pointed at -- the case it exists for.

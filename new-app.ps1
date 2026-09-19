@@ -78,9 +78,33 @@ if ($Existing -or $Update) {
 function Resolve-KitFiles([string[]] $roots) {
     $map = [ordered]@{}
     foreach ($root in $roots) {
-        Get-ChildItem -LiteralPath $root -Recurse -File -Force | ForEach-Object {
-            $map[$_.FullName.Substring($root.Length).TrimStart($sep)] = $_.FullName
+        foreach ($entry in (Get-RelativeFiles $root).GetEnumerator()) { $map[$entry.Key] = $entry.Value }
+    }
+    return $map
+}
+
+# Relative path -> full path for every file under $root.
+#
+# Never cut the root off an enumerated path by its length: the caller's spelling of
+# a directory and the spelling Get-ChildItem reports back are not always the same
+# one. -ProjectsRoot given as an 8.3 short path (GitHub's Windows runners set TEMP
+# to one) comes back expanded, so Substring removed the wrong number of characters,
+# every relative key was mangled, and a repo's own README.md was not recognised as
+# already present -- so -Existing overwrote it with the template's. Let the provider
+# do the arithmetic instead.
+function Get-RelativeFiles([string] $root) {
+    $map = [ordered]@{}
+    if (-not (Test-Path -LiteralPath $root)) { return $map }
+    $prefix = '.' + $sep
+    Push-Location -LiteralPath $root
+    try {
+        foreach ($item in (Get-ChildItem -Recurse -File -Force)) {
+            $rel = Resolve-Path -LiteralPath $item.FullName -Relative
+            if ($rel.StartsWith($prefix)) { $rel = $rel.Substring($prefix.Length) }
+            $map[$rel] = $item.FullName
         }
+    } finally {
+        Pop-Location
     }
     return $map
 }
@@ -113,11 +137,7 @@ if ($Update -and $fromCommit) {
 # The destination's file list as it was before this run, so -Existing can never
 # report "kept" for a file this same run just created.
 $before = @{}
-if (Test-Path -LiteralPath $dest) {
-    Get-ChildItem -LiteralPath $dest -Recurse -File -Force | ForEach-Object {
-        $before[$_.FullName.Substring($dest.Length).TrimStart($sep)] = $true
-    }
-}
+foreach ($rel in (Get-RelativeFiles $dest).Keys) { $before[$rel] = $true }
 
 $copied = New-Object System.Collections.Generic.List[string]
 $kept = New-Object System.Collections.Generic.List[string]

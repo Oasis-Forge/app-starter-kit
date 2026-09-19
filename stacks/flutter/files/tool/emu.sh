@@ -27,7 +27,7 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1 # stops Git Bash rewriting /sdcard into a Windows path
 
-app={{APP_ID}}
+app="{{APP_ID}}"
 sdk=${ANDROID_HOME:-${LOCALAPPDATA:-$HOME}/Android/Sdk}
 if command -v cygpath >/dev/null; then sdk=$(cygpath -u "$sdk"); fi
 
@@ -58,8 +58,7 @@ ready() {
 # navigation bars are left out; so is anything with no label that can't be
 # tapped, typed into, or scrolled.
 elements() {
-  local try
-  for try in 1 2 3; do
+  for _ in 1 2 3; do
     # Fails with "could not get idle state" while something animates.
     adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && break
     sleep 1

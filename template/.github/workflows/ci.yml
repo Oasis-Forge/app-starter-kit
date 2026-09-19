@@ -30,6 +30,12 @@ jobs:
           echo "::error::Fill in the stack's checks in .github/workflows/ci.yml."
           exit 1
 
+      # GitHub Pages publishes every file in docs/, on the domain the store listing
+      # points at. This fails when a doc is neither excluded nor declared public.
+      - name: Check what GitHub Pages would publish
+        if: ${{ !cancelled() }}
+        run: bash scripts/check_public_docs.sh
+
       # Every merged PR is a release (release.yml), so the version must be above
       # the latest vX.Y.Z tag and have a CHANGELOG.md entry. Dependabot PRs ship
       # with the next release instead.

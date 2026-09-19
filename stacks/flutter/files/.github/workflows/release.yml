@@ -94,7 +94,10 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          # A variable, not a secret: GitHub masks a secret's value everywhere it
+          # appears in a log, and an alias like "upload" would turn every mention of
+          # upload-keystore.jks into ***-keystore.jks.
+          KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS || 'upload' }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then

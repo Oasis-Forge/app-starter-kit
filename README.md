@@ -6,6 +6,7 @@ The docs, Claude Code setup, and GitHub workflows that took a real app from an e
 
 ```
 CLAUDE.md                           Conventions for working on the kit itself (not the same as an app's)
+skills/new-app                      Personal skill: "start a new app" → create the project → /kickoff
 PLAYBOOK.md                         The flow: kickoff → research → rules → roadmap → build loop → release
 new-app.ps1                         Copies the kit into D:\Desktop\projects\<name>, and -Update refreshes an app
 tests/                              Checks the kit's own tooling against the ways it has been wrong before
@@ -40,6 +41,20 @@ stacks/flutter/files/               Overlay: Flutter CI, Android release, format
 ```
 
 ## Start a new app
+
+Ask Claude, from anywhere:
+
+> start a new app from the starter kit
+
+The `/new-app` skill asks what you're building and which platforms v1 targets, picks the stack from that, creates the project, moves into it and runs `/kickoff` — which asks for the rest (principles, stores, store ID, public or private, the competitor to study). Install it once with:
+
+```powershell
+Copy-Item -Recurse -Force .\skills\new-app "$env:USERPROFILE\.claude\skills\"
+```
+
+It's a personal skill rather than a project one because it has to be available before the project exists. Re-run that copy after pulling the kit to pick up changes to it.
+
+### Or by hand
 
 1. From this folder:
    ```powershell

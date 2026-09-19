@@ -26,7 +26,10 @@ function Throws([scriptblock] $block) {
     try { & $block | Out-Null; return $false } catch { return $true }
 }
 function Reset([string] $path) {
-    if (Test-Path -LiteralPath $path) { [System.IO.Directory]::Delete($path, $true) }
+    # The extended-length prefix, because this suite deliberately creates a path past
+    # the 260-character limit further down and could not otherwise clear it: running
+    # twice against the same work root failed in cleanup rather than in a check.
+    if (Test-Path -LiteralPath $path) { [System.IO.Directory]::Delete("\\?\$path", $true) }
     New-Item -ItemType Directory -Force -Path $path | Out-Null
 }
 
@@ -146,6 +149,36 @@ Check '-Refresh with no stamp and no -Stack is refused' (Throws {
     & $script -Name bare -ProjectsRoot $WorkRoot -Refresh
 })
 Check 'two modes at once are refused' (Throws { & $script -Name refresh -ProjectsRoot $WorkRoot -Refresh -Update })
+
+# Some divergences are permanent and right: an app whose Flutter project sits in a
+# subdirectory needs its own VERSION_FILE for as long as it exists. With nowhere to
+# say so, that file is reported as an owed merge on every run and the stamp is never
+# written -- so the app can never reach -Update, and the check makes the loop it
+# exists to serve impossible to enter.
+Write-Output ""
+Write-Output ".kit-ignore, for a divergence the app means"
+$own = Join-Path $WorkRoot 'own'
+New-Item -ItemType Directory -Force -Path (Join-Path $own 'scripts') | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $own 'docs') | Out-Null
+Set-Content "$own\scripts\version.sh" '# ours, deliberately' -Encoding UTF8
+Set-Content "$own\docs\STACK_NOTES.md" '# an older copy' -Encoding UTF8
+Set-Content "$own\.kit-ignore" "scripts/version.sh  # the app is in a subdirectory" -Encoding UTF8
+$out = & $script -Name own -Stack flutter -ProjectsRoot $WorkRoot -Refresh
+Check 'a declared file is not reported as differing' (-not ($out -match 'differs\s+scripts'))
+Check 'it is listed as ours instead' ([bool]($out -match 'ours\s+scripts'))
+Check 'with the reason it was given' ([bool]($out -match 'the app is in a subdirectory'))
+Check 'no .kit-new is written for it' (-not (Test-Path "$own\scripts\version.sh.kit-new"))
+Check "the app's own version is untouched" (Has "$own\scripts\version.sh" 'ours, deliberately')
+# An undeclared difference must still hold the stamp back, or declaring one file
+# would quietly excuse every other.
+Check 'an undeclared difference still blocks the stamp' (-not (Test-Path "$own\.kit-version"))
+Check 'and still gets its .kit-new' (Test-Path "$own\docs\STACK_NOTES.md.kit-new")
+
+Copy-Item "$own\docs\STACK_NOTES.md.kit-new" "$own\docs\STACK_NOTES.md" -Force
+Remove-Item "$own\docs\STACK_NOTES.md.kit-new" -Force
+& $script -Name own -Stack flutter -ProjectsRoot $WorkRoot -Refresh | Out-Null
+Check 'with only declared ones left, the stamp lands' (Test-Path "$own\.kit-version")
+Check 'and the declared file is still the app''s own' (Has "$own\scripts\version.sh" 'ours, deliberately')
 
 # Flutter's build/ has Gradle transform paths past the 260-character limit. Walking
 # the whole destination hit them and threw, so -Existing died on the first real app

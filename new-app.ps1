@@ -155,6 +155,29 @@ function Test-SameContent([string] $a, [string] $b) {
     return $left -eq $right
 }
 
+# Paths this app deliberately keeps its own version of, from .kit-ignore, as
+# "path  # why". Some divergences are permanent and correct -- an app whose Flutter
+# project sits in a subdirectory needs its own VERSION_FILE and its own Dependabot
+# directory, for as long as it exists. Without somewhere to say so, those two files
+# are reported as needing a merge on every single run and the stamp is never
+# written, so the app can never reach -Update at all: the check would have made the
+# loop it exists to serve impossible to enter.
+$declared = [ordered]@{}
+$ignoreFile = Join-Path $dest '.kit-ignore'
+if (Test-Path -LiteralPath $ignoreFile) {
+    foreach ($line in (Get-Content -LiteralPath $ignoreFile)) {
+        $text = $line.Trim()
+        if (-not $text -or $text.StartsWith('#')) { continue }
+        $why = ''
+        $hash = $text.IndexOf('#')
+        if ($hash -ge 0) {
+            $why = $text.Substring($hash + 1).Trim()
+            $text = $text.Substring(0, $hash).Trim()
+        }
+        if ($text) { $declared[$text.Replace([char]47, $sep)] = $why }
+    }
+}
+
 $sources = @(Join-Path $kit 'template')
 if ($Stack -ne 'none') { $sources += $overlay }
 $files = Resolve-KitFiles $sources
@@ -192,6 +215,7 @@ $kept = New-Object System.Collections.Generic.List[string]
 $review = New-Object System.Collections.Generic.List[string]
 $added = New-Object System.Collections.Generic.List[string]
 $ownedByApp = New-Object System.Collections.Generic.List[string]
+$declaredHere = New-Object System.Collections.Generic.List[string]
 
 if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
 
@@ -226,7 +250,12 @@ foreach ($rel in $files.Keys) {
         # of, put its version beside them to read against.
         $kept.Add($rel)
         if (-not (Test-SameContent $source $target)) {
-            if (Test-Templated $source) {
+            if ($declared.Contains($rel)) {
+                # Declared in .kit-ignore. Still listed on every run, with the reason,
+                # so a deliberate divergence stays visible -- it just stops being
+                # treated as something waiting to be merged.
+                $declaredHere.Add($rel)
+            } elseif (Test-Templated $source) {
                 # This app filled these in, or wrote its own. Differing is expected.
                 $ownedByApp.Add($rel)
             } else {
@@ -246,6 +275,7 @@ foreach ($rel in $files.Keys) {
 
 foreach ($rel in $kept) {
     if ($review -contains $rel) { Write-Output "differs $rel" }
+    elseif ($declaredHere -contains $rel) { Write-Output "ours    $rel" }
     elseif ($ownedByApp -contains $rel) { Write-Output "theirs  $rel" }
     else { Write-Output "kept    $rel" }
 }
@@ -309,6 +339,15 @@ if ($DryRun) {
         Write-Output "settings -- a version lookup pointed into a subdirectory, a Dependabot directory -- and"
         Write-Output "nothing here can see that. Merge what belongs, delete the .kit-new, then run the same"
         Write-Output "again to record the stamp."
+    }
+    if ($declaredHere.Count) {
+        Write-Output ""
+        Write-Output "$($declaredHere.Count) file(s) this app declares as its own in .kit-ignore. Listed every run so a"
+        Write-Output "deliberate divergence stays visible, but they hold nothing back:"
+        foreach ($rel in $declaredHere) {
+            $why = $declared[$rel]
+            if ($why) { Write-Output "  $rel  -- $why" } else { Write-Output "  $rel" }
+        }
     }
     if ($ownedByApp.Count) {
         Write-Output ""

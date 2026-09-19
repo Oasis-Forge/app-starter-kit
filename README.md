@@ -117,6 +117,18 @@ It never overwrites a file the repo already has, and sorts every one of them:
 
 So merge by hand, keep what is yours, and delete the `.kit-new`.
 
+### When the difference is permanent: `.kit-ignore`
+
+Both examples above are forever — that app's Flutter project is in a subdirectory and always will be. Without somewhere to say so, they'd be reported as an owed merge on every run and the stamp would never land, so the app could never reach `-Update` at all. A `.kit-ignore` in the app says it once:
+
+```
+# Files this app keeps its own version of.
+scripts/version.sh        # VERSION_FILE points into a subdirectory: the app is not at the repo root
+.github/dependabot.yml    # directory: matches, for the same reason
+```
+
+They're still listed on every run, with the reason, so a deliberate divergence stays visible. They just stop counting as work outstanding. **Anything not listed still holds the stamp back** — declaring one file doesn't excuse the rest.
+
 **`.kit-version` is not written while anything is `differs`**, because a stamp would make `-Update` answer "already up to date" over exactly the files still waiting to be read. Once none are left, run `-Existing` again and the stamp lands.
 
 An established app usually needs more than this. The kit assumes the app is at the repo root, and it adds docs (`docs/ROADMAP.md`, `docs/RELEASING.md`) that may duplicate ones the repo keeps elsewhere. Read the dry run and delete what you don't want before committing — or skip the additions entirely and take only the files you already have, which is often all an established app wants.

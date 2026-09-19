@@ -87,6 +87,7 @@ Every turn re-sends the whole conversation, so what you pay for is the *length o
 - **Keep tool output small.** Grep with a path and read line ranges; run tests with a failures-only reporter; never print a whole file or a lockfile to look at three lines.
 - **Hand bulky mechanical work to a subagent.** Its context never comes back — only its result. Translations, doc and changelog edits, release chores, and long build logs all belong there.
 - **Compact or clear between roadmap items.** This is the whole win, and it is free. `/handoff` is what makes it safe: the state is in the repo and in memory, so the chat is disposable.
+- **Tokens are turn count; minutes are the tool.** A subagent with thirteen calls pays its `CLAUDE.md` baseline thirteen times, and that is fixable by handing it the answer instead of the search. A build that takes twelve minutes is Gradle, Xcode or CI, and no prompt shortens it — the only fix is not running it. Question any step still going after about five minutes: say what it is doing, and whether anything depends on the result.
 
 A memory plugin does not fix this. It helps you *start fresh cheaply*, which is valuable, but it cannot shrink a session that is already long.
 
@@ -120,7 +121,7 @@ Each of these cost real time once. The fix is already in the template.
 | Hand-driving found a plural message repeated on every row and minus signs trailing in right-to-left layouts; unit tests passed | Drive every screen feature in one RTL language and one theme before the PR |
 | A real device service as a constructor default hung the test suite for 10 minutes | Default to no-op fakes; build real services only in the entry point |
 | A plugin would have added boot, wake-lock, and foreground-service permissions to a "collects nothing" app | CI checks the release manifest's permissions; prefer ~100 lines of glue to a heavy package |
-| `dist/` still held 1.0.0 after the branch moved to 1.0.1 | `/release` rebuilds the local artifact after every app change on the branch |
+| `dist/` still held 1.0.0 after the branch moved to 1.0.1 | `/release --build` rebuilds the local artifact after every app change on the branch |
 | Store IDs almost carried a personal name | IDs and publisher metadata use the product name only |
 | Test data on the emulator belonged to the user | Put back anything changed while testing |
 | The chat gets cleared to save tokens, and context went with it | `/handoff` writes the state to memory; "resume" reads it |
@@ -135,3 +136,5 @@ Each of these cost real time once. The fix is already in the template.
 | Closing the purchase sheet without buying left "Waiting for the store" spinning; the tests only covered buying and declining | Test every way an external flow can end, including the user just closing it |
 | The classic branch-protection API said 404 for a `main` a ruleset already protected, and a duplicate ruleset nearly followed | Check with `gh api repos/<owner>/<repo>/rulesets` |
 | Restoring an emulator snapshot brought back app versions the user had removed on purpose | Put back only what the session changed; ask before loading anything older |
+| A release spent twelve of its fourteen minutes rebuilding the artifacts CI builds again on merge | Local artifacts are built when they will be used (`/release --build`) |
+| Writing three release-note bullets opened translation files of 25–40 KB per language | Notes come from the changelog entry alone, in one write |

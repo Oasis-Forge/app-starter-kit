@@ -2,7 +2,7 @@
 
 _{{DATE}}._
 
-This file defines how {{APP_NAME}} behaves: the calculations, defaults, and edge cases behind each screen. Each section says what the competitor does (see `docs/research/competitor-analysis.md`), what we take from it, and our rule. We learn from their app; we don't copy its rules.
+This file defines how {{APP_NAME}} behaves: the calculations, defaults, and edge cases behind each screen. Where a competitor was studied (see `docs/research/competitor-analysis.md`), a section says what they do, what we take from it, and our rule: we learn from their app; we don't copy its rules. Where none was, a section starts from the user need instead.
 
 - Rule IDs (`DATA-1`) are stable: never renumber or reuse one. A dropped rule stays, struck through, with its date and reason. Tests, code comments, PRs, and roadmap items reference them.
 - A rule is testable: a number, a default, an order, an edge case. "Entry is fast" isn't a rule; "a basic entry takes about four taps" is.
@@ -20,6 +20,8 @@ This file defines how {{APP_NAME}} behaves: the calculations, defaults, and edge
 > **Learn:** the user need behind it, and where they fall short.
 >
 > - **AREA-1** Our rule.
+
+With no competitor studied (`docs/research/competitor-analysis.md` records that, dated), a section has no **They do** and opens with **Learn**, written from the user need itself. Never write a **They do** from what a competitor is assumed to do: the rules below it would then cite a guess as observed fact.
 
 The sections below are starter rules that held up in an earlier app. Keep, change, or delete each one, and record the choice under Decisions.
 

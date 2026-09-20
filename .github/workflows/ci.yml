@@ -46,6 +46,19 @@ jobs:
             echo "::endgroup::"
           done
 
+      # These files are copied into apps whose format hook and CI run a current
+      # SDK, so stale `dart format` output here is not cosmetic: the first edit an
+      # app makes reformats the file and drops an unrelated hunk into that PR, and
+      # until then -Refresh reports the file as differing from the kit for no
+      # reason. Both tools had drifted a whole minor version behind.
+      - name: Check the stack tools' formatting
+        run: |
+          shopt -s nullglob
+          files=(stacks/*/files/tool/*.dart)
+          if [ ${#files[@]} -eq 0 ]; then echo 'No Dart tools to check.'; exit 0; fi
+          printf 'checking %s\n' "${files[@]}"
+          dart format --output=none --set-exit-if-changed "${files[@]}"
+
       # tests/test-*.sh each exit non-zero on the first failed check.
       - name: Run the shell tests
         run: |

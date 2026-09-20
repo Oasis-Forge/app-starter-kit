@@ -53,21 +53,10 @@ List<String> changedFiles(String base) {
 
   final mergeBase = git(['merge-base', base, 'HEAD']).trim();
   final paths = {
-    ...git([
-      'diff',
-      '--name-only',
-      '--diff-filter=d',
-      mergeBase,
-      '--',
-      'lib',
-    ]).split('\n'),
-    ...git([
-      'ls-files',
-      '--others',
-      '--exclude-standard',
-      '--',
-      'lib',
-    ]).split('\n'),
+    ...git(['diff', '--name-only', '--diff-filter=d', mergeBase, '--', 'lib'])
+        .split('\n'),
+    ...git(['ls-files', '--others', '--exclude-standard', '--', 'lib'])
+        .split('\n'),
   };
   return [
     for (final path in paths.map((p) => p.trim()))

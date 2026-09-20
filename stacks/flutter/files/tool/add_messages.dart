@@ -144,7 +144,8 @@ List<String> check(Map<String, dynamic> input, Map<String, dynamic> english) {
     final placeholders =
         (value.containsKey('placeholders')
                 ? value['placeholders']
-                : (english['@$key'] as Map?)?['placeholders']) as Map? ??
+                : (english['@$key'] as Map?)?['placeholders'])
+            as Map? ??
         const {};
     for (final name in placeholders.keys) {
       final use = RegExp('\\{$name[},]');

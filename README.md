@@ -46,7 +46,7 @@ Ask Claude, from anywhere:
 
 > start a new app from the starter kit
 
-The `/new-app` skill asks what you're building and which platforms v1 targets, picks the stack from that, creates the project, moves into it and runs `/kickoff` — which asks for the rest (principles, stores, store ID, public or private, the competitor to study). Install it once with:
+The `/new-app` skill asks what you're building and which platforms v1 targets, picks the stack from that, creates the project, moves into it and runs `/kickoff` — which asks for the rest (principles, stores, store ID, public or private, the competitor to study) and creates the repo under the `Oasis-Forge` organization. Install it once with:
 
 ```powershell
 Copy-Item -Recurse -Force .\skills\new-app "$env:USERPROFILE\.claude\skills\"
@@ -61,7 +61,7 @@ It's a personal skill rather than a project one because it has to be available b
    .\new-app.ps1 -Name habit-tracker -Stack flutter
    ```
    It resolves `template/` and the stack's `files/` into one set (the stack wins), copies it into `D:\Desktop\projects\habit-tracker`, runs `git init`, and writes `.kit-version` recording the kit commit and every path the kit owns. Use `-Stack none` for a stack the kit doesn't cover yet, `-DryRun` to print what would be copied without writing, and `-Existing` to adopt the kit into a repo that already exists (below).
-2. Open Claude Code in the new folder and run `/kickoff`. It asks for the name, pitch, principles, platforms, and store ID; fills every placeholder; scaffolds the stack; makes the first commit; and creates the private GitHub repo.
+2. Open Claude Code in the new folder and run `/kickoff`. It asks for the name, pitch, principles, platforms, and store ID; fills every placeholder; scaffolds the stack; makes the first commit; and creates the private GitHub repo under the `Oasis-Forge` organization.
 3. Continue with [PLAYBOOK.md](PLAYBOOK.md) stage 2 (research).
 
 ## Placeholders
@@ -77,7 +77,8 @@ It's a personal skill rather than a project one because it has to be available b
 | `PRINCIPLES` | no tracking, no account; data leaves the device only through user export |
 | `STACK`, `FLUTTER_VERSION` | Flutter 3.47.4 / Dart 3.13.3 |
 | `PLATFORMS`, `STORES` | Android, iOS, desktop / Google Play, the App Store |
-| `GITHUB_OWNER`, `REPO` | your-github-handle, habit-tracker |
+| `GITHUB_OWNER`, `REPO` | Oasis-Forge, habit-tracker — the owner is always the organization, so `/kickoff` fills it without asking |
+| `GITHUB_USER` | your-github-handle: the person, not the org. Only where a person is meant — the `@claude` actor gate and the noreply commit email |
 | `DATE`, `DATE_ISO` | 14 September 2026, 2026-09-14 |
 | `CMD_*` | Commands from the stack's `docs/STACK_NOTES.md` → Fill-ins |
 

@@ -29,6 +29,7 @@
 - Before a branch is merged: `/ship` (coverage of changed files, missing tests, docs, `/verify`, `/release`, drive it by hand, PR). The format check is the last thing before a commit, never a mid-session step.
 
 ## Workflow
+- The repo lives under the `{{GITHUB_OWNER}}` organization — `github.com/{{GITHUB_OWNER}}/{{REPO}}` — never a personal account. Anything that takes an owner (`gh repo`, `gh api repos/...`, the Pages URL in the store listing) gets the org; `gh api user` answers with the person, which is a different thing and belongs only in the `@claude` actor gate and the noreply commit email.
 - Start of an item: `git switch main`, `git pull --ff-only`, then branch from it. Never stack on an unmerged branch.
 - Bundle related roadmap items into one PR by theme, and tick their boxes in that PR.
 - Pass PR/issue bodies and commit messages through files (`gh pr create --body-file`, `git commit -F`): PowerShell 5.1 splits double quotes in here-strings.

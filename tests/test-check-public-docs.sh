@@ -47,7 +47,7 @@ YML
 }
 # cwd is $work, so the script's own default (docs/_config.yml relative to cwd) is
 # what runs unless a case passes its own path argument.
-run() { (cd "$work" && bash "$script" "$@" 2>&1); }
+run() { (cd "$work" && bash "$script" 2>&1); }
 
 echo "check_public_docs.sh in $kit"
 echo ""

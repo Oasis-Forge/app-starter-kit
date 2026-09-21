@@ -1,9 +1,9 @@
 name: Release
 
-# Every merge to main runs this. CI makes every PR bump the version, so a merge
-# is normally a release; one that leaves the version alone (a Dependabot PR, or
-# a PR merged behind another) runs the same checks, and the summary says it is
-# not a release. A stack overlay replaces this file with one that also builds,
+# Every merge to main runs this. Most merges are not releases: a release is the
+# maintainer's call, and a PR that leaves the version alone is the normal case.
+# Either way the merge runs the same checks; only the summary says whether the
+# version moved. A stack overlay replaces this file with one that also builds,
 # as a check.
 #
 # It publishes nothing: no GitHub Release, no artifact, no store upload. A CI

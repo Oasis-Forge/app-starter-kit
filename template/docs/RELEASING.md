@@ -1,9 +1,10 @@
 # Releasing
 
-Every PR merged to `main` is a release. The app version is the source of truth: `x.y.z` follows [Semantic Versioning](https://semver.org) (major for breaking changes, minor for new features, patch for fixes and everything else). Mobile stores also need a build number `N` (`x.y.z+N`) that grows by one with every release. `bash scripts/version.sh name` and `build` read them.
+A release is cut when the user asks for one, not on every merge. The app version is the source of truth: `x.y.z` follows [Semantic Versioning](https://semver.org) (major for breaking changes, minor for new features, patch for fixes and everything else). Mobile stores also need a build number `N` (`x.y.z+N`) that grows by one with every release. `bash scripts/version.sh name` and `build` read them.
 
-1. **Before merging**, bump the version on the branch with `/release [major|minor|patch]`, or by hand: edit the version and add a `## [x.y.z] - YYYY-MM-DD` entry to `CHANGELOG.md`. CI fails if the version isn't above the one on `main` or has no changelog entry. Dependabot PRs are exempt and ship with the next release.
-2. **On merge**, `release.yml` builds the release artifacts as a check, runs whatever gates the stack has, and says in its summary whether the merge was a release — a Dependabot merge is not, by design. It publishes nothing and tags nothing.
+1. **Most branches are not releases.** Put the change under `## [Unreleased]` in `CHANGELOG.md` and leave the version alone. CI passes a branch whose version stands still, so nothing forces a release — the decision is the user's.
+2. **When the user asks for one**, bump the version on the branch with `/release [major|minor|patch]`, or by hand: edit the version and move the Unreleased entries under a `## [x.y.z] - YYYY-MM-DD` heading. From there CI fails if the version is not above the one on `main`, or has no changelog entry.
+3. **On merge**, `release.yml` builds the release artifacts as a check and runs whatever gates the stack has, whether or not this merge is a release, and says in its summary which it was. It publishes nothing and tags nothing.
 
 Any other platform's release workflow is run by hand from the Actions tab, or with `gh workflow run <workflow>.yml --ref main`.
 
@@ -27,7 +28,7 @@ A store-publishing service account is not created at all.
 
 ## When a release is bad
 
-Every merged PR is a release, so there will be a bad one. Decide none of this while it is happening.
+Release often enough and there will be a bad one. Decide none of this while it is happening.
 
 1. **Stop the spread first.** In Play Console, halt the rollout on the track it is on. A version code that has been published can never be reused or re-uploaded, and an app cannot be rolled back to an earlier release: the only way out is a higher version going out.
 2. **Fix forward, never backward.** `git revert` the merge and open a PR, and CI refuses it — the reverted tree's version is at or below main's, which is exactly what `scripts/version.sh check` exists to catch. That is a stuck pipeline during the one hour it matters. If the fix *is* a revert, revert on a branch off a freshly pulled `main` **and** run `/release patch` on it, so the undo is itself a release with its own version and changelog entry.

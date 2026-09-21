@@ -21,4 +21,4 @@
 
 ## Development
 
-Built with Claude Code. `CLAUDE.md` holds the conventions. The project skills are `/spec` (rules before code), `/verify` (checks), `/release` (version bump), `/ship` (pre-merge gate), and `/handoff` (session notes). Every PR merged to `main` is a release.
+Built with Claude Code. `CLAUDE.md` holds the conventions. The project skills are `/spec` (rules before code), `/verify` (checks), `/release` (version bump), `/ship` (pre-merge gate), and `/handoff` (session notes). Every merge is checked; a release is cut when the maintainer asks for one.

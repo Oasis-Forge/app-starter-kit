@@ -13,7 +13,8 @@ Adds only the kit files the existing project doesn't have yet.
 .EXAMPLE
 .\new-app.ps1 -Name habit-tracker -Update
 Re-copies the kit files that changed since this project was made. Files /kickoff
-filled in land beside the original as <file>.kit-new, to merge by hand.
+filled in land beside the original as <file>.kit-new, to merge by hand and delete;
+files named in the project's .kit-ignore are left alone.
 
 .EXAMPLE
 .\new-app.ps1 -Name an-established-app -Stack flutter -Refresh
@@ -161,7 +162,8 @@ function Test-SameContent([string] $a, [string] $b) {
 # directory, for as long as it exists. Without somewhere to say so, those two files
 # are reported as needing a merge on every single run and the stamp is never
 # written, so the app can never reach -Update at all: the check would have made the
-# loop it exists to serve impossible to enter.
+# loop it exists to serve impossible to enter. Every mode honours it: -Update copies
+# nothing over a declared file and offers no .kit-new for it.
 $declared = [ordered]@{}
 $ignoreFile = Join-Path $dest '.kit-ignore'
 if (Test-Path -LiteralPath $ignoreFile) {
@@ -216,6 +218,8 @@ $review = New-Object System.Collections.Generic.List[string]
 $added = New-Object System.Collections.Generic.List[string]
 $ownedByApp = New-Object System.Collections.Generic.List[string]
 $declaredHere = New-Object System.Collections.Generic.List[string]
+$addedTemplated = New-Object System.Collections.Generic.List[string]
+$waiting = New-Object System.Collections.Generic.List[string]
 
 if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }
 
@@ -228,8 +232,18 @@ foreach ($rel in $files.Keys) {
         if (-not $before.ContainsKey($rel)) {
             # The app had it and removed it: leave it removed.
             if ($wasCopied.ContainsKey($rel)) { continue }
-            # New in the kit since this project was made: safe to add outright.
+            # New in the kit since this project was made: safe to add outright. If it
+            # still has placeholders, nothing here fills them in -- /kickoff is long
+            # gone from this app -- so the summary points them out.
             $added.Add($rel)
+            if (Test-Templated $source) { $addedTemplated.Add($rel) }
+        } elseif ($declared.Contains($rel)) {
+            # Declared in .kit-ignore: the app keeps its own version for good. -Update
+            # consulted the list nowhere, so a declared file the kit had since changed
+            # was copied straight over the app's own -- or, when templated, offered as
+            # a .kit-new on every run. Listed with its reason, and left alone.
+            $declaredHere.Add($rel)
+            continue
         } elseif (Test-Templated $source) {
             # The app owns its copy. Put the kit's new one beside it to merge by hand,
             # so a fix to a skill or a workflow still reaches a project already built.
@@ -273,14 +287,25 @@ foreach ($rel in $files.Keys) {
     $copied.Add($rel)
 }
 
+# A .kit-new an earlier -Update left and nobody has dealt with yet. Reported on
+# every run until it is gone; that is what lets the stamp move on at once (below).
+if ($Update) {
+    foreach ($rel in $files.Keys) {
+        if ($review.Contains($rel)) { continue }
+        if (Test-Path -LiteralPath (Join-Path $dest "$rel.kit-new")) { $waiting.Add($rel) }
+    }
+}
+
 foreach ($rel in $kept) {
     if ($review -contains $rel) { Write-Output "differs $rel" }
     elseif ($declaredHere -contains $rel) { Write-Output "ours    $rel" }
     elseif ($ownedByApp -contains $rel) { Write-Output "theirs  $rel" }
     else { Write-Output "kept    $rel" }
 }
+if ($Update) { foreach ($rel in $declaredHere) { Write-Output "ours    $rel" } }
 foreach ($rel in $copied) { if ($added -contains $rel) { Write-Output "added   $rel" } else { Write-Output "copied  $rel" } }
 foreach ($rel in $review) { Write-Output "review  $rel.kit-new" }
+foreach ($rel in $waiting) { Write-Output "waiting $rel.kit-new" }
 
 # The stamp is what makes -Update possible: it records the kit commit this project
 # came from and every path the kit owns in it.
@@ -301,11 +326,15 @@ function Write-Stamp() {
     Set-Content -LiteralPath $stamp -Value $lines -Encoding UTF8
 }
 
-# The stamp only lands once nothing is left to merge, so an unmerged .kit-new is
-# never forgotten: the next run offers it again. On a fresh copy there is nothing to
-# merge, so it always lands. Stamping while copies are still stale would be the
-# worst outcome of all -- -Update would then answer "already up to date".
-if (-not $DryRun -and $review.Count -eq 0) { Write-Stamp }
+# When the stamp lands depends on the mode. -Existing and -Refresh compare content,
+# so a `differs` resolves itself once merged: there the stamp waits until nothing is
+# left to read, because stamping over stale copies would make -Update answer
+# "already up to date". -Update has no such test -- an app's copy of a templated
+# file never equals the kit's, merged or not -- so waiting there meant the same diff
+# re-offered the same .kit-new on every run, and no app ever got past a change to a
+# templated file. It records the new commit at once instead; the .kit-new left on
+# disk is the reminder, and is reported on every run until it is deleted.
+if (-not $DryRun -and ($Update -or $review.Count -eq 0)) { Write-Stamp }
 
 if (-not $DryRun -and -not $Update -and -not (Test-Path -LiteralPath (Join-Path $dest '.git'))) {
     git -C $dest init -b main --quiet
@@ -321,9 +350,31 @@ if ($DryRun) {
         Write-Output "Updated $($copied.Count) kit-owned file(s) in $dest (stack: $Stack)."
         if ($review.Count) {
             Write-Output "$($review.Count) file(s) this app filled in have changed in the kit. Their new versions sit"
-            Write-Output "beside them as .kit-new: merge what you want, delete the .kit-new, then run -Update again"
-            Write-Output "to record the new kit commit."
+            Write-Output "beside them as .kit-new: merge what you want, then delete the .kit-new. Each is listed"
+            Write-Output "on every run until it is gone."
         }
+    }
+    if ($waiting.Count) {
+        Write-Output ""
+        Write-Output "$($waiting.Count) .kit-new file(s) from an earlier run are still waiting to be merged and deleted:"
+        foreach ($rel in $waiting) { Write-Output "  $rel.kit-new" }
+    }
+    if ($addedTemplated.Count) {
+        Write-Output ""
+        Write-Output "$($addedTemplated.Count) added file(s) still carry {{PLACEHOLDERS}}, and nothing here fills them in. Do it"
+        Write-Output "by hand: the values are in CLAUDE.md and docs/STACK_NOTES.md (Fill-ins):"
+        foreach ($rel in $addedTemplated) { Write-Output "  $rel" }
+    }
+    if ($declaredHere.Count) {
+        Write-Output ""
+        Write-Output "$($declaredHere.Count) file(s) this app declares as its own in .kit-ignore changed in the kit. Nothing"
+        Write-Output "was written for them; compare by hand only if the reason no longer holds:"
+        foreach ($rel in $declaredHere) {
+            $why = $declared[$rel]
+            if ($why) { Write-Output "  $rel  -- $why" } else { Write-Output "  $rel" }
+        }
+    }
+    if ($copied.Count -or $review.Count) {
         Write-Output "Review 'git diff' in that folder, then commit on a branch."
     }
 } elseif ($Existing -or $Refresh) {

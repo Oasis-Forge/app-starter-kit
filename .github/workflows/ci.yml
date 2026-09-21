@@ -69,7 +69,7 @@ jobs:
             bash "$t" || status=1
             echo "::endgroup::"
           done
-          exit $status
+          exit "$status"
 
   powershell:
     name: PowerShell tests
@@ -80,9 +80,12 @@ jobs:
         with:
           fetch-depth: 0  # tests/-Update needs a commit older than HEAD to diff against
 
-      # A parse error in new-app.ps1 only shows up when someone starts an app.
+      # A parse error in new-app.ps1 only shows up when someone starts an app. Parsed
+      # with Windows PowerShell 5.1, the same one the tests below run under and the
+      # kit is used with: pwsh's parser accepts `??`, `?.`, the ternary and `&&`,
+      # which 5.1 rejects, and the format hook is a script no test executes.
       - name: Parse every script
-        shell: pwsh
+        shell: powershell
         run: |
           $bad = 0
           Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
@@ -111,14 +114,25 @@ jobs:
           exit $status
 
   workflows:
-    name: Template workflows are valid YAML
+    name: Template workflows are valid
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
 
-      # The template's workflows are never run from this repo, so a YAML error in
-      # one is invisible until an app's first PR fails to start at all.
+      # The template's workflows are never run from this repo, so a mistake in one is
+      # invisible until an app's first PR fails to start at all. actionlint knows the
+      # workflow schema, checks every ${{ }} expression, and runs shellcheck over each
+      # `run:` block -- the `aapt2 | tee` gate that failed open was valid YAML.
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.7
+          shopt -s nullglob
+          files=(.github/workflows/*.yml template/.github/workflows/*.yml stacks/*/files/.github/workflows/*.yml)
+          printf 'checking %s\n' "${files[@]}"
+          ./actionlint -color "${files[@]}"
+
+      # Every other YAML file the kit ships (Dependabot, Pages) at least has to parse.
       - name: Parse every workflow
         run: |
           python3 -c 'import yaml' 2>/dev/null || pip install --quiet pyyaml

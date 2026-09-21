@@ -218,11 +218,44 @@ if ($old) {
         Set-Content "$fresh\CLAUDE.md" -Encoding UTF8
     [System.IO.Directory]::Delete((Join-Path $fresh '.claude\skills\kickoff'), $true)
 
-    & $script -Name fresh -ProjectsRoot $WorkRoot -Update | Out-Null
+    # .kit-ignore names the kit files an app keeps its own version of. -Update consulted
+    # it nowhere: a declared file the kit had since changed was copied straight over the
+    # app's own, and a declared templated one got a .kit-new on every run. Both apps built
+    # from the kit had declared exactly the files the kit changed next.
+    Set-Content "$fresh\scripts\version.sh" '# ours, deliberately' -Encoding UTF8
+    Set-Content "$fresh\.claude\skills\release\SKILL.md" '# ours: releasing here is by hand' -Encoding UTF8
+    Set-Content "$fresh\.kit-ignore" @(
+        'scripts/version.sh               # the app is in a subdirectory',
+        '.claude/skills/release/SKILL.md  # releasing here is by hand'
+    ) -Encoding UTF8
+    # A kit file that is new since $old and still carries placeholders lands with them
+    # unfilled, and nothing in the app fills it (/kickoff is long gone), so -Update has
+    # to say so. Made "new" by removing it from the app and from the stamp's file list.
+    Remove-Item "$fresh\docs\ROADMAP.md" -Force
+    (Get-Content "$fresh\.kit-version") | Where-Object { $_ -notmatch 'docs/ROADMAP\.md' } |
+        Set-Content "$fresh\.kit-version" -Encoding UTF8
+
+    $out = & $script -Name fresh -ProjectsRoot $WorkRoot -Update
     Check "a file /kickoff filled in is not overwritten" (Has "$fresh\CLAUDE.md" 'Habit Tracker')
     Check 'its new version lands as .kit-new' (Test-Path "$fresh\CLAUDE.md.kit-new")
-    Check 'the stamp waits for the merge' (Has "$fresh\.kit-version" "commit = $old")
     Check 'a file the app deleted stays deleted' (-not (Test-Path (Join-Path $fresh '.claude\skills\kickoff')))
+    Check "a declared file is left as the app's own" (Has "$fresh\scripts\version.sh" 'ours, deliberately')
+    Check 'and listed as ours, with the reason' ([bool]($out -match 'ours\s+scripts') -and [bool]($out -match 'the app is in a subdirectory'))
+    Check 'a declared templated file gets no .kit-new' (-not (Test-Path "$fresh\.claude\skills\release\SKILL.md.kit-new"))
+    Check 'a new kit file is added even with placeholders in it' (Has "$fresh\docs\ROADMAP.md" '\{\{APP_NAME\}\}')
+    Check 'and the placeholders left to fill are pointed out' ([bool]($out -match 'PLACEHOLDERS'))
+    # The stamp used to wait for every .kit-new to be merged, but nothing could tell a
+    # merged one from an unread one: the same diff re-offered the same .kit-new on every
+    # run, and no app could ever get past a change to a templated file. The stamp now
+    # records the new commit at once, and a .kit-new left on disk is the reminder.
+    Check 'the stamp records the new commit' (Has "$fresh\.kit-version" "commit = $(git -C $kit rev-parse HEAD)")
+
+    $out = & $script -Name fresh -ProjectsRoot $WorkRoot -Update
+    Check 'a .kit-new still on disk is reported on the next run' ([bool]($out -match 'CLAUDE\.md\.kit-new'))
+    Remove-Item "$fresh\CLAUDE.md.kit-new" -Force
+    $out = & $script -Name fresh -ProjectsRoot $WorkRoot -Update
+    Check 'once it is dealt with, it is not offered again' (-not (Test-Path "$fresh\CLAUDE.md.kit-new"))
+    Check 'and the app reads as up to date' ([bool]($out -match 'up to date'))
 } else {
     Write-Output "  skip  -Update from an older commit (no git history here)"
 }

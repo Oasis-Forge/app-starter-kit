@@ -1,8 +1,10 @@
 name: Release
 
-# Every merge to main runs this. CI makes every PR bump the version, so every
-# merged PR is a release. A stack overlay replaces this file with one that also
-# builds, as a check.
+# Every merge to main runs this. CI makes every PR bump the version, so a merge
+# is normally a release; one that leaves the version alone (a Dependabot PR, or
+# a PR merged behind another) runs the same checks, and the summary says it is
+# not a release. A stack overlay replaces this file with one that also builds,
+# as a check.
 #
 # It publishes nothing: no GitHub Release, no artifact, no store upload. A CI
 # build is unsigned or debug-signed unless the optional signing secrets are set,
@@ -28,17 +30,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # Two commits: on main, whether this merge is a release is read by comparing
+      # its version with the commit before it (scripts/version.sh released).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
       - name: Read the version
         id: version
         run: |
           name=$(bash scripts/version.sh name)
           release=false
-          if [ "$GITHUB_REF" != refs/heads/main ]; then
-            echo "Not on main: building $name as a check only." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$GITHUB_REF" = refs/heads/main ]; then
+            # CI compares each PR against main's version, so a merge can leave it
+            # unchanged: a Dependabot PR, which the gate exempts, or a PR merged
+            # behind another that took the same version. Nothing on main can be
+            # fixed by a red build, so that is reported rather than refused.
+            release=$(bash scripts/version.sh released)
           else
-            release=true
+            echo "Not on main: building $name as a check only." >> "$GITHUB_STEP_SUMMARY"
           fi
           { echo "name=$name"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
 
@@ -57,4 +67,16 @@ jobs:
             echo
             echo "Nothing is published from CI and no tag is pushed."
             echo "Build the artifact locally and upload it by hand — see docs/RELEASING.md."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Say that this merge is not a release
+        if: steps.version.outputs.release != 'true' && github.ref == 'refs/heads/main'
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+        run: |
+          {
+            echo "### Not a release: main is still on $NAME"
+            echo
+            echo "This merge left the version alone: a dependency bump, or a PR merged behind another."
+            echo "It was checked all the same. Its changes go out with the next version."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -99,11 +99,18 @@ git -C "$d" commit --quiet -m one
 git -C "$d" commit --quiet --allow-empty -m two
 git -C "$d" push --quiet origin main
 
-# On main — the merge build — the baseline is the commit before the merge.
-# Two PRs opened together both pass the gate against the same main; the first
-# merge moves it, and the second would otherwise ship as part of no release.
-# Here the last commit left the version alone, which is that case.
-(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad 'on main, a version the last commit did not raise is refused' || ok 'on main, a version the last commit did not raise is refused'
+# On main itself -- the merge build -- there is no PR to gate. A merge that leaves
+# the version alone is a Dependabot PR (exempt from the gate by design) or a PR
+# merged behind another, and nothing a red build could fix: main cannot raise its
+# own version. So `check` reports instead of refusing, and `released` answers
+# true/false for the workflow. The gate used to fail release.yml on every
+# Dependabot merge. Here the last commit left the version alone, which is that case.
+out=$(cd "$d" && bash version.sh check 2>&1); code=$?
+check 'on main, a version the last commit did not raise is not refused' "$code" '0'
+case "$out" in *"::error::"*) bad "and it is not an error (got: $out)" ;; *) ok 'and it is not an error' ;; esac
+check 'released answers false for it' "$(cd "$d" && bash version.sh released 2>/dev/null)" 'false'
+out=$(cd "$d" && bash version.sh released 2>&1 >/dev/null)
+case "$out" in *"::notice::"*) ok 'and says why, as a notice' ;; *) bad "and says why, as a notice (got: $out)" ;; esac
 
 # The same merge build, but the merge did raise the version: that is a release.
 # In its own fixture, so pushing to main here can't move the baseline the
@@ -118,6 +125,24 @@ git -C "$d6" add -A > /dev/null
 git -C "$d6" commit --quiet -m 'raise on main'
 git -C "$d6" push --quiet origin main
 (cd "$d6" && bash version.sh check > /dev/null 2>&1) && ok 'on main, a raised version is a release' || bad 'on main, a raised version is a release'
+check 'released answers true for it' "$(cd "$d6" && bash version.sh released 2>/dev/null)" 'true'
+
+# `released` compares this commit with the one before it and nothing else, so it
+# needs no origin, and a first commit -- nothing to compare with -- counts as a
+# release, said out loud in case it is really a checkout without fetch-depth 2.
+d7=$(repo local)
+git -C "$d7" remote remove origin
+printf 'name: app\nversion: 1.0.0+1\n' > "$d7/pubspec.yaml"
+git -C "$d7" add -A > /dev/null
+git -C "$d7" commit --quiet -m one
+out=$(cd "$d7" && bash version.sh released 2>&1 >/dev/null)
+check 'released on a first commit answers true' "$(cd "$d7" && bash version.sh released 2>/dev/null)" 'true'
+case "$out" in *"::warning::"*) ok 'and warns that there was nothing to compare with' ;; *) bad "and warns that there was nothing to compare with (got: $out)" ;; esac
+printf 'name: app\nversion: 1.0.1+2\n' > "$d7/pubspec.yaml"
+git -C "$d7" commit --quiet -am two
+check 'released needs no origin' "$(cd "$d7" && bash version.sh released 2>/dev/null)" 'true'
+git -C "$d7" commit --quiet --allow-empty -m three
+check 'a commit that leaves the version alone is not a release' "$(cd "$d7" && bash version.sh released 2>/dev/null)" 'false'
 
 # Now a branch: HEAD is ahead of origin/main, which is what a PR looks like.
 git -C "$d" commit --quiet --allow-empty -m three

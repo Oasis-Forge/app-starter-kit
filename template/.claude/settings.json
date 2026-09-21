@@ -21,7 +21,6 @@
     ],
     "deny": [
       "Read(./build/**)",
-      "Read(./dist/**)",
       "Read(./coverage/**)",
       "Read(./node_modules/**)"
     ]

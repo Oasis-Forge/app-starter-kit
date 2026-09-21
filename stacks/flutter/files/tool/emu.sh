@@ -17,6 +17,8 @@
 #   forget <name>      delete a snapshot
 #   install <apk>      install over the app, keeping its data
 #   launch             restart the app
+#   app                print the application id `launch` uses: APP_ID if set,
+#                      else the Android build file's applicationId
 #   screen             one line per element: label @ x,y (flags)
 #   tap <label> [n]    tap the nth element (default 1st) labelled <label>
 #                      exactly, or else containing it, ignoring case
@@ -30,7 +32,6 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1 # stops Git Bash rewriting /sdcard into a Windows path
 
-app="{{APP_ID}}"
 sdk=${ANDROID_HOME:-${LOCALAPPDATA:-$HOME}/Android/Sdk}
 if command -v cygpath >/dev/null; then sdk=$(cygpath -u "$sdk"); fi
 
@@ -40,6 +41,24 @@ if command -v cygpath >/dev/null; then sdk=$(cygpath -u "$sdk"); fi
 usage() {
   sed -n '2,/^[^#]/{ /^#/{ s/^# \{0,1\}//; p; } }' "$0" >&2
   exit 64
+}
+
+# The application id `launch` starts: APP_ID when set, else the applicationId in
+# the Android build file, wherever the Flutter project sits under this repo. Read
+# at use rather than filled in by /kickoff, so this file carries no placeholder
+# and a fix to it reaches every app outright instead of landing as a .kit-new to
+# merge by hand.
+app_id() {
+  if [ -n "${APP_ID:-}" ]; then echo "$APP_ID"; return; fi
+  local gradle id
+  for gradle in android/app/build.gradle.kts android/app/build.gradle \
+    */android/app/build.gradle.kts */android/app/build.gradle; do
+    [ -f "$gradle" ] || continue
+    id=$(sed -nE 's/^[[:space:]]*applicationId[[:space:]]*=?[[:space:]]*"([^"]+)".*/\1/p' "$gradle" | head -n 1)
+    if [ -n "$id" ]; then echo "$id"; return; fi
+  done
+  echo "No application id to launch: set APP_ID, or put applicationId in android/app/build.gradle(.kts)." >&2
+  return 1
 }
 
 # adb obeys ANDROID_SERIAL for every subcommand, `emu` included, so pinning it once
@@ -220,7 +239,7 @@ if [ $# -gt 0 ]; then shift; fi
 
 # Every command but these needs a device, and needs it to be the right one.
 case $command in
-start | '' | -h | --help | help) ;;
+start | app | '' | -h | --help | help) ;;
 *) use_device ;;
 esac
 
@@ -233,7 +252,8 @@ load) snapshot load "${1:?needs a name}" && adb wait-for-device ;;
 snapshots) adb emu avd snapshot list ;;
 forget) snapshot delete "${1:?needs a name}" ;;
 install) adb install -r "${1:?needs an apk}" | tail -1 ;;
-launch) adb shell am start -S -n "$app/.MainActivity" >/dev/null && echo "Launched." ;;
+launch) app=$(app_id) && adb shell am start -S -n "$app/.MainActivity" >/dev/null && echo "Launched." ;;
+app) app_id ;;
 screen) screen ;;
 tap) tap "$@" ;;
 hold) hold "$@" ;;

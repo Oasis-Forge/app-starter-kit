@@ -3,7 +3,7 @@
 Every PR merged to `main` is a release. The app version is the source of truth: `x.y.z` follows [Semantic Versioning](https://semver.org) (major for breaking changes, minor for new features, patch for fixes and everything else). Mobile stores also need a build number `N` (`x.y.z+N`) that grows by one with every release. `bash scripts/version.sh name` and `build` read them.
 
 1. **Before merging**, bump the version on the branch with `/release [major|minor|patch]`, or by hand: edit the version and add a `## [x.y.z] - YYYY-MM-DD` entry to `CHANGELOG.md`. CI fails if the version isn't above the one on `main` or has no changelog entry. Dependabot PRs are exempt and ship with the next release.
-2. **On merge**, `release.yml` builds the release artifacts as a check and runs whatever gates the stack has, including the version gate a second time. It publishes nothing and tags nothing.
+2. **On merge**, `release.yml` builds the release artifacts as a check, runs whatever gates the stack has, and says in its summary whether the merge was a release — a Dependabot merge is not, by design. It publishes nothing and tags nothing.
 
 Any other platform's release workflow is run by hand from the Actions tab, or with `gh workflow run <workflow>.yml --ref main`.
 
@@ -16,7 +16,7 @@ A CI build is unsigned or debug-signed unless the signing secrets are set, so an
 What that means in practice:
 
 - **`release.yml` still builds**, because that proves the release build compiles somewhere other than the developer's machine, and it is where the release-manifest and permission gates run. Its build is a check, not a deliverable.
-- **No tag is pushed either.** `scripts/version.sh check` compares a PR against the version on `origin/main` instead. On main — the merge build — it compares against the commit before the merge, which keeps the safeguard tags used to provide: two PRs opened together both pass against the same trunk, and without that second look the one merged last ships as part of no release. The job needs `fetch-depth: 2` for it.
+- **No tag is pushed either.** `scripts/version.sh check` compares a PR against the version on `origin/main` instead. On main — the merge build — `scripts/version.sh released` compares the merge with the commit before it and reports whether it was a release. A merge that left the version alone (a Dependabot PR, or one merged behind another that took the same version) is built and checked all the same; the summary says it is not a release, and its changes go out with the next version. The job needs `fetch-depth: 2` for it.
 - **The record of a version is its `CHANGELOG.md` entry** and the commit that raised it, not a tag or a release page.
 - **Signing is local.** Keep the keystore and `key.properties` in the project, both gitignored. The store-credential secrets below become unnecessary; set them only if a CI-built artifact ever has to be uploadable.
 - **Check the signer before every upload.** The fall back to a debug key is silent, and a store rejects the upload rather than explaining it.
@@ -61,6 +61,7 @@ The release workflow is the one job that decodes the keystore and holds the Play
 Settings → Rules → Rulesets → New branch ruleset, target `main`:
 - Require a pull request before merging.
 - Require status checks to pass: the CI job names. Run CI on one PR first so the names show up in the picker.
+- Allowed merge methods: merge and squash, not rebase. After a rebase merge the commit before main's tip is the PR's own last commit, so a release whose version bump came earlier in the PR is reported as no release.
 - Block force pushes and deletion.
 - Bypass list: empty, so even the admin merges through a PR, or Repository admin if you want an emergency override.
 

@@ -1,7 +1,10 @@
 name: Release
 
 # Every merge to main builds the APK and AAB and checks the release manifest's
-# permissions. CI makes every PR bump the version.
+# permissions. CI makes every PR bump the version, so a merge is normally a
+# release; one that leaves the version alone (a Dependabot PR, or a PR merged
+# behind another) is built and checked all the same, and the summary says it is
+# not a release.
 #
 # It leaves nothing behind: no GitHub Release, no artifact, no Play upload, and
 # no tag. The build here is a check that the release build compiles on a clean
@@ -34,8 +37,8 @@ jobs:
       name: ${{ steps.read.outputs.name }}
       release: ${{ steps.read.outputs.release }}
     steps:
-      # Two commits: on main the gate compares this merge against the one before
-      # it (scripts/version.sh check).
+      # Two commits: on main, whether this merge is a release is read by comparing
+      # its version with the commit before it (scripts/version.sh released).
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
@@ -45,25 +48,23 @@ jobs:
         run: |
           name=$(bash scripts/version.sh name)
           release=false
-          if [ "$GITHUB_REF" != refs/heads/main ]; then
-            echo "Not on main: building $name as a check only." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$GITHUB_REF" = refs/heads/main ]; then
+            # CI compares each PR against main's version, so a merge can leave it
+            # unchanged: a Dependabot PR, which the gate exempts, or a PR merged
+            # behind another that took the same version. Nothing on main can be
+            # fixed by a red build, so that is reported rather than refused -- and
+            # the build below runs either way: a dependency bump is exactly what
+            # can break the release build or add a permission, and this is where
+            # those gates are.
+            release=$(bash scripts/version.sh released)
           else
-            # CI compares each PR against main's version, so two PRs opened
-            # together can both pass with the same one. The first merge moves
-            # main; the second would then ship as part of no release, leaving
-            # main's code unreleased and the artifact older than its own
-            # changelog. Silently doing nothing is the one outcome worth
-            # refusing, so on main the gate runs again against the commit
-            # before this merge — which is why the checkout fetches two.
-            bash scripts/version.sh check
-            release=true
+            echo "Not on main: building $name as a check only." >> "$GITHUB_STEP_SUMMARY"
           fi
           { echo "name=$name"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
 
   build:
     name: Build and check
     needs: version
-    if: needs.version.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -145,7 +146,7 @@ jobs:
           # itself now lives in tool/check_permissions.sh, where it is shellchecked
           # and covered by tests/test-permission-gate.sh.
           set -euo pipefail
-          aapt2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)
+          aapt2=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -n 1)
           "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk > permissions.txt
           cat permissions.txt
           bash tool/check_permissions.sh permissions.txt
@@ -170,4 +171,14 @@ jobs:
             echo '    flutter build appbundle --release'
             echo
             echo "See docs/RELEASING.md."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Say that this merge is not a release
+        if: env.RELEASE != 'true' && github.ref == 'refs/heads/main'
+        run: |
+          {
+            echo "### Not a release: main is still on $NAME"
+            echo
+            echo "This merge left the version alone: a dependency bump, or a PR merged behind another."
+            echo "It was built and checked all the same. Its changes go out with the next version."
           } >> "$GITHUB_STEP_SUMMARY"

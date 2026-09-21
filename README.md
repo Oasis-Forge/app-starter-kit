@@ -10,7 +10,7 @@ skills/new-app                      Personal skill: "start a new app" → create
 PLAYBOOK.md                         The flow: kickoff → research → rules → roadmap → build loop → release
 new-app.ps1                         Copies the kit in; -Existing adopts, -Refresh updates tooling only, -Update follows the kit
 tests/                              Checks the kit's own tooling against the ways it has been wrong before
-.github/workflows/ci.yml            Runs those tests, shellchecks the scripts, parses every template workflow
+.github/workflows/ci.yml            Runs those tests, shellchecks the scripts, lints every template workflow
 template/                           Copied into every app
   CLAUDE.md                         Stack, commands, conventions, workflow, token rules, gotchas
   README.md  CHANGELOG.md           
@@ -127,7 +127,7 @@ scripts/version.sh        # VERSION_FILE points into a subdirectory: the app is 
 .github/dependabot.yml    # directory: matches, for the same reason
 ```
 
-They're still listed on every run, with the reason, so a deliberate divergence stays visible. They just stop counting as work outstanding. **Anything not listed still holds the stamp back** — declaring one file doesn't excuse the rest.
+They're still listed on every run, with the reason, so a deliberate divergence stays visible. They just stop counting as work outstanding. **Anything not listed still holds the stamp back** — declaring one file doesn't excuse the rest. `-Update` honours the same list: when the kit changes a declared file, it says so and writes nothing.
 
 **`.kit-version` is not written while anything is `differs`**, because a stamp would make `-Update` answer "already up to date" over exactly the files still waiting to be read. Once none are left, run `-Existing` again and the stamp lands.
 
@@ -145,7 +145,9 @@ It diffs the recorded commit against the kit's `HEAD` and touches only what chan
 
 - Files the kit owns outright (`scripts/version.sh`, `tool/`, hooks, un-filled skills) are **copied over**.
 - Files `/kickoff` filled in with the app's own name, commands and version are **never overwritten**. The kit's new version lands beside them as `<file>.kit-new` to merge by hand, then delete.
-- `.kit-version` only moves forward once no `.kit-new` is left, so a pending merge can't be forgotten.
+- Files named in `.kit-ignore` are **left alone**, and listed with their reason when the kit changed them.
+- A file that is new in the kit is **added as it is**. If it still carries `{{PLACEHOLDERS}}`, the run says so: fill them in by hand from `CLAUDE.md` and `docs/STACK_NOTES.md`.
+- `.kit-version` records the new commit at once. A `.kit-new` still on disk is reported on every later run until it is deleted, so a pending merge can't be forgotten. The stamp can't wait for the merge instead: nothing can tell a merged copy from an unread one, and waiting meant the same `.kit-new` was offered again on every run, for good.
 
 Run it on a branch and read `git diff` before committing. `.kit-new` files are scratch: they belong in neither a commit nor the ignore file.
 

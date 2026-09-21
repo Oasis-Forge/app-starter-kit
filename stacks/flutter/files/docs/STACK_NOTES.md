@@ -18,7 +18,7 @@ Read on demand: the fill-ins `/kickoff` uses, and the traps earlier Flutter apps
 | `CMD_BUILD_RELEASE` | `flutter build apk --release`, then `flutter build appbundle --release` (they write `build/app/outputs/flutter-apk/app-release.apk`, `build/app/outputs/bundle/release/app-release.aab`, and Play's `build/app/outputs/mapping/release/mapping.txt`; copy them out with Bash `cp`) |
 | `CMD_RUN` | `flutter run` |
 
-SDK: if `flutter` isn't on PATH, or PATH points at a different SDK than CI pins, use `D:\Desktop\projects\flutter_sdk\flutter\bin\flutter.bat`, with `dart.bat` next to it.
+SDK: if `flutter` isn't on PATH, or PATH points at a different SDK than CI pins, use `D:\Desktop\projects\flutter_sdk\flutter\bin\flutter.bat`, with `dart.bat` next to it. The format hook formats with the SDK `FLUTTER_ROOT` names, then that folder, then whatever `dart` is on PATH; set `FLUTTER_ROOT` on a machine where the SDK lives elsewhere.
 
 ## Scaffold
 
@@ -99,12 +99,12 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
 - Plugins add permissions silently. Check the release APK with `aapt2 dump permissions`, and prefer ~100 lines of platform-channel glue over a package that brings in WorkManager or boot receivers.
 - `pdf` package: use static TTF fonts (variable fonts lose their weights), and set text direction per run on right-to-left pages. Test a PDF by reading its text back, not by byte count.
 - Writing `\u` escapes has put literal invisible characters in files. Use `String.fromCharCode` instead.
-- The format hook may use a different SDK than CI. Run the pinned SDK's `dart format lib test` before committing.
+- The format hook may use a different SDK than CI. Point `FLUTTER_ROOT` at the SDK CI pins, and run that SDK's `dart format lib test` before committing.
 - Icons and splash: draw them in a test (`tool/render_app_icons_test.dart`), then run `dart run flutter_launcher_icons` and `dart run flutter_native_splash:create`, and commit the generated files.
 
 ## Device drill (Android emulator, Git Bash)
 
-`/emulator` does all of this as text through `tool/emu.sh`, with a snapshot before each test; the commands below are for doing it by hand.
+`/emulator` does all of this as text through `tool/emu.sh`, with a snapshot before each test; the commands below are for doing it by hand. `bash tool/emu.sh app` prints the application id `launch` uses: it reads `applicationId` from the Android build file, so the tool carries no placeholder and kit fixes reach it outright; set `APP_ID` to override.
 
 ```bash
 "$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd Medium_Phone -no-boot-anim

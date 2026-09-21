@@ -16,7 +16,10 @@ docs=$(dirname "$config")
 # "  - name" under each key, up to the next unindented line.
 listed() { sed -n "/^$1:/,/^[^ -]/{ s/^  *- *//p; }" "$config"; }
 
-known=$(printf '%s\n%s\n' "$(listed exclude)" "$(listed public)" | grep -v '^[[:space:]]*$' | sort -u)
+# `|| true`: with both lists empty grep selects nothing and exits 1, and under
+# set -e that ended the script right here -- exit 1, but silently, with no
+# ::error:: line to say what was wrong.
+known=$(printf '%s\n%s\n' "$(listed exclude)" "$(listed public)" | grep -v '^[[:space:]]*$' | sort -u || true)
 
 missing=""
 while IFS= read -r entry; do

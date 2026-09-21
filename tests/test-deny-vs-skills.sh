@@ -13,11 +13,28 @@
 # `adb install -r dist/<slug>-X.Y.Z.apk`, so the one hand-test step /ship
 # requires could not run. Nothing caught it, because the kit executes none of
 # this: the first app to adopt that settings file would have paid for it.
+#
+# The shared template kept the same Read(./dist/**) after the flutter stack dropped
+# it, so an app on a stack the kit has no overlay for got it -- and the release
+# skill tells /release to copy its artifacts into dist/. That mention is prose
+# ("copy the results to `dist/...`"), not a command, so the check below would not
+# have seen it: dist/ gets its own rule, as the one directory the kit's own skills
+# write into.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 status=0
 checked=0
+
+# dist/ is where /release puts the local artifact and where /emulator installs it
+# from, in every stack. No settings file the kit ships may deny it.
+for settings in template/.claude/settings.json stacks/*/files/.claude/settings.json; do
+  [ -e "$settings" ] || continue
+  if grep -qE '"Read\(\./dist/\*\*\)"' "$settings"; then
+    echo "FAIL: $settings denies Read(./dist/**), the directory /release writes the artifact to and /emulator installs from"
+    status=1
+  fi
+done
 
 # A candidate is treated as a command when it opens with a lowercase word followed
 # by a space: `adb install -r dist/x.apk` is a command, `dist/x.apk` on its own is
@@ -46,15 +63,19 @@ commands_in() {
   ' "$1"
 }
 
-for settings in stacks/*/files/.claude/settings.json; do
+# The shared settings against the shared docs (what a -Stack none app gets), and
+# each stack's settings against its own docs plus the shared ones.
+for settings in template/.claude/settings.json stacks/*/files/.claude/settings.json; do
   [ -e "$settings" ] || continue
-  stack=$(basename "$(dirname "$(dirname "$(dirname "$settings")")")")
+  case "$settings" in
+    template/*) stack=template ;;
+    *) stack=$(basename "$(dirname "$(dirname "$(dirname "$settings")")")") ;;
+  esac
 
   denied=$(grep -oE '"Read\(\./[^)*]+/\*\*\)"' "$settings" |
     sed -E 's|^"Read\(\./||; s|/\*\*\)"$||' || true)
   [ -n "$denied" ] || continue
 
-  # The stack's own docs, plus the shared ones every app gets alongside them.
   docs=()
   for pattern in \
     "stacks/$stack/files/.claude/skills"/*/SKILL.md \

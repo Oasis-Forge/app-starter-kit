@@ -1,6 +1,6 @@
 name: Claude
 
-# Runs only when the owner mentions @claude, so tokens are spent on request, never automatically.
+# Runs only when you mention @claude, so tokens are spent on request, never automatically.
 
 on:
   issue_comment:
@@ -22,7 +22,7 @@ permissions:
 jobs:
   claude:
     if: >-
-      github.actor == '{{GITHUB_OWNER}}' && (
+      github.actor == '{{GITHUB_USER}}' && (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||

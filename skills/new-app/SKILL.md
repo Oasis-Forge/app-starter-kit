@@ -25,6 +25,6 @@ The kit lives at `D:\Desktop\projects\app-starter-kit`. If it isn't there, stop 
 
 5. **Move into the new project.** Use this client's directory-change tool if it has one — in the desktop app it is a deferred tool, so search the tool list before concluding there isn't one. Failing that, tell the user to open `D:\Desktop\projects\<name>` and run `/kickoff` there, and stop. Don't run the rest from the kit's folder: `/kickoff` fills placeholders relative to the working directory, and pointed at the kit it would rewrite the kit itself.
 
-6. **Run `/kickoff`.** It is the kit's own skill and now lives in the new project. It fills every placeholder, scaffolds the stack, makes the first commit and creates the GitHub repo. Tell it what you already collected — the pitch, the platforms and the name — so it asks only for what's left: principles, target stores, the store ID, public or private, and the competitor to study.
+6. **Run `/kickoff`.** It is the kit's own skill and now lives in the new project. It fills every placeholder, scaffolds the stack, makes the first commit and creates the GitHub repo under the `Oasis-Forge` organization, which is where every app the kit makes lives. Tell it what you already collected — the pitch, the platforms and the name — so it asks only for what's left: principles, target stores, the store ID, public or private, and the competitor to study.
 
 Report in at most 4 lines: where the project is, which stack, which kit commit, and that `/kickoff` is running or waiting to be run there.

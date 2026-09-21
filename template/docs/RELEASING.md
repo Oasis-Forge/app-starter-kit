@@ -70,10 +70,10 @@ Check it with `gh api repos/{{GITHUB_OWNER}}/{{REPO}}/rulesets`. The classic bra
 
 ## Public repository
 
-- **Secrets stay safe:** GitHub masks secret values in logs, and the workflows never print them. CI uses `pull_request`, not `pull_request_target`, so PRs from forks run without secrets. `claude.yml` runs only for `{{GITHUB_OWNER}}`.
+- **Secrets stay safe:** GitHub masks secret values in logs, and the workflows never print them. CI uses `pull_request`, not `pull_request_target`, so PRs from forks run without secrets. `claude.yml` runs only for `{{GITHUB_USER}}`.
 - **Nothing downloadable is produced**, so a public repo exposes no build at all: `release.yml` creates no GitHub Release and uploads no artifact.
 - **Fork PRs:** Settings → Actions → General → "Approval for running fork pull request workflows" → "Require approval for all external contributors".
-- **Commit emails are public.** Use the noreply address from GitHub → Settings → Emails: `git config user.email "<id>+{{GITHUB_OWNER}}@users.noreply.github.com"`.
+- **Commit emails are public.** Use the noreply address from GitHub → Settings → Emails: `git config user.email "<id>+{{GITHUB_USER}}@users.noreply.github.com"`.
 - **License:** with no `LICENSE` file the code is "all rights reserved". Flathub and similar stores need a license that allows redistribution.
 - A public repo gets free GitHub-hosted runners, macOS included, so CI can compile iOS on every PR.
 
@@ -131,7 +131,7 @@ Without the signing secrets, CI signs each APK with a throwaway debug key, which
 
 ## One-time setup: Claude GitHub Action
 
-Run `/install-github-app` from a `claude` terminal, or install the Claude GitHub app on the repo and add `CLAUDE_CODE_OAUTH_TOKEN`. Then comment `@claude <request>` on an issue or PR. Only `{{GITHUB_OWNER}}` can trigger it, and each run is capped at 15 turns.
+Run `/install-github-app` from a `claude` terminal, or install the Claude GitHub app on the repo and add `CLAUDE_CODE_OAUTH_TOKEN`. Then comment `@claude <request>` on an issue or PR. Only `{{GITHUB_USER}}` can trigger it, and each run is capped at 15 turns.
 
 ## One-time setup: desktop stores
 

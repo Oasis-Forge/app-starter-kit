@@ -1,9 +1,14 @@
 name: Release
 
-# Every merge to main whose version has no vX.Y.Z tag yet tags the merge commit
-# and drafts a GitHub Release with the CHANGELOG.md entry as notes. CI makes every
-# PR bump the version, so every merged PR is a release. A stack overlay replaces
-# this file with one that also builds and attaches the artifacts.
+# Every merge to main whose version has no vX.Y.Z tag yet tags the merge commit.
+# CI makes every PR bump the version, so every merged PR is a release. A stack
+# overlay replaces this file with one that also builds, as a check.
+#
+# It publishes nothing: no GitHub Release, no artifact, no store upload. A CI
+# build is unsigned or debug-signed unless the optional signing secrets are set,
+# so anything downloadable from here is a build nobody can install over an
+# existing copy and nobody can upload to a store — while looking exactly like the
+# one that shipped. One machine produces the real artifact (docs/RELEASING.md).
 
 on:
   push:
@@ -19,7 +24,7 @@ concurrency:
 
 jobs:
   release:
-    name: Tag and draft the release
+    name: Tag the release
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -40,14 +45,12 @@ jobs:
           fi
           { echo "name=$name"; echo "tag=$tag"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
 
-      # Build the release artifacts into dist/ here, named after the version.
+      # A stack overlay builds the release artifacts here, as a check that the
+      # release build compiles on a clean machine and to run whatever gates the
+      # stack has. Nothing is uploaded or attached: the artifact that reaches a
+      # store is built locally (docs/RELEASING.md).
 
-      - name: Write release notes
-        if: steps.version.outputs.release == 'true'
-        run: bash scripts/version.sh notes > release-notes.md
-
-      # CI's version check compares PRs against this tag. A draft release doesn't
-      # create its tag, so push it first.
+      # CI's version check compares PRs against this tag.
       - name: Tag the release
         if: steps.version.outputs.release == 'true'
         env:
@@ -55,14 +58,3 @@ jobs:
         run: |
           git tag "$TAG" "$GITHUB_SHA"
           git push origin "refs/tags/$TAG"
-
-      # Draft: on a public repo the artifacts stay private until you publish.
-      - name: Draft the GitHub Release
-        if: steps.version.outputs.release == 'true'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: '{{APP_NAME}} ${{ steps.version.outputs.name }}'
-          body_path: release-notes.md
-          files: dist/*
-          draft: true

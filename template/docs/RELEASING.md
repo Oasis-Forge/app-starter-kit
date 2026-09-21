@@ -3,9 +3,25 @@
 Every PR merged to `main` is a release. The app version is the source of truth: `x.y.z` follows [Semantic Versioning](https://semver.org) (major for breaking changes, minor for new features, patch for fixes and everything else). Mobile stores also need a build number `N` (`x.y.z+N`) that grows by one with every release. `bash scripts/version.sh name` and `build` read them.
 
 1. **Before merging**, bump the version on the branch with `/release [major|minor|patch]`, or by hand: edit the version and add a `## [x.y.z] - YYYY-MM-DD` entry to `CHANGELOG.md`. CI fails if the version isn't above the latest `vX.Y.Z` tag or has no changelog entry. Dependabot PRs are exempt and ship with the next release.
-2. **On merge**, `release.yml` builds the release artifacts, tags the merge commit `vX.Y.Z`, and attaches them to a **draft** GitHub Release with the changelog entry as notes. A merge whose version is already tagged releases nothing.
+2. **On merge**, `release.yml` builds the release artifacts as a check, runs whatever gates the stack has, and tags the merge commit `vX.Y.Z`. It publishes nothing. A merge whose version is already tagged does nothing.
 
 Tags pushed by CI don't start other workflows, so any other platform's release workflow is run by hand from the Actions tab, or with `gh workflow run <workflow>.yml --ref vX.Y.Z`. Each checks that the tag matches the version.
+
+## Nothing is published from CI
+
+**The artifact a store receives is built on one machine and uploaded by a person.** No GitHub Release, no CI artifact, no store upload from a workflow.
+
+A CI build is unsigned or debug-signed unless the signing secrets are set, so anything downloadable from a workflow is a build nobody can install over an existing copy and nobody can upload to a store — while looking exactly like the one that shipped. Keeping one source for the real artifact removes that class of mistake, and the upload key never has to leave the machine.
+
+What that means in practice:
+
+- **`release.yml` still builds**, because that proves the release build compiles somewhere other than the developer's machine, and it is where the release-manifest and permission gates run. Its build is a check, not a deliverable.
+- **It still pushes the `vX.Y.Z` tag**, because CI's version check compares every PR against the latest tag. Dropping the tag breaks the release gate.
+- **The record of a version is its tag plus its `CHANGELOG.md` entry**, not a release page.
+- **Signing is local.** Keep the keystore and `key.properties` in the project, both gitignored. The store-credential secrets below become unnecessary; set them only if a CI-built artifact ever has to be uploadable.
+- **Check the signer before every upload.** The fall back to a debug key is silent, and a store rejects the upload rather than explaining it.
+
+A store-publishing service account is not created at all.
 
 <!-- Delete the sections below for platforms {{APP_NAME}} doesn't target. -->
 
@@ -15,9 +31,9 @@ Every merged PR is a release, so there will be a bad one. Decide none of this wh
 
 1. **Stop the spread first.** In Play Console, halt the rollout on the track it is on. A version code that has been published can never be reused or re-uploaded, and an app cannot be rolled back to an earlier release: the only way out is a higher version going out.
 2. **Fix forward, never backward.** `git revert` the merge and open a PR, and CI refuses it — the reverted tree's version is at or below the latest `vX.Y.Z` tag, which is exactly what `scripts/version.sh check` exists to catch. That is a stuck pipeline during the one hour it matters. If the fix *is* a revert, revert on a branch off a freshly pulled `main` **and** run `/release patch` on it, so the undo is itself a release with its own version and changelog entry.
-3. **Leave the tag and the draft release alone.** The tag records what shipped, and CI compares every later PR against it. Deleting it makes the next version check compare against the wrong thing.
+3. **Leave the tag alone.** The tag records what shipped, and CI compares every later PR against it. Deleting it makes the next version check compare against the wrong thing.
 4. **Say what happened in the changelog**, in the same user-facing words as everything else: what was wrong and what the new version does about it.
-5. **Read the crash before guessing.** Play symbolicates with the deobfuscation mapping the release workflow uploads alongside the bundle, so the stack traces in Play Console are readable.
+5. **Read the crash before guessing.** Play symbolicates with the deobfuscation mapping carried inside the uploaded bundle, so the stack traces in Play Console are readable. Keep the bundle you uploaded: it is the only copy, since CI publishes nothing.
 
 ## GitHub secrets and variables
 
@@ -30,7 +46,7 @@ Add them in GitHub → Settings → Secrets and variables → Actions, or with `
 | `ANDROID_KEYSTORE_PASSWORD` | secret | `release.yml` | Keystore password |
 | `ANDROID_KEY_ALIAS` | variable | `release.yml` | Key alias, e.g. `upload` (the default). A *secret* here would be worse than useless: GitHub masks a secret’s value everywhere it appears in a log, so `upload` turns `upload-keystore.jks` into `***-keystore.jks` |
 | `ANDROID_KEY_PASSWORD` | secret | `release.yml` | Key password |
-| `PLAY_SERVICE_ACCOUNT_JSON` | secret | `release.yml` | Google Cloud service-account JSON key with Play Console release access |
+| ~~`PLAY_SERVICE_ACCOUNT_JSON`~~ | — | — | **Not used.** Nothing publishes to a store from CI; the artifact is built locally and uploaded by hand. Listed so nobody adds it back |
 | `IOS_DIST_CERT_P12_BASE64` | secret | iOS release | Base64 of the Apple Distribution certificate (`.p12`) |
 | `IOS_DIST_CERT_PASSWORD` | secret | iOS release | Password of the `.p12` |
 | `APPSTORE_ISSUER_ID` | secret | iOS release | App Store Connect API issuer ID |
@@ -53,7 +69,7 @@ Check it with `gh api repos/{{GITHUB_OWNER}}/{{REPO}}/rulesets`. The classic bra
 ## Public repository
 
 - **Secrets stay safe:** GitHub masks secret values in logs, and the workflows never print them. CI uses `pull_request`, not `pull_request_target`, so PRs from forks run without secrets. `claude.yml` runs only for `{{GITHUB_OWNER}}`.
-- **Releases are drafts**, so nobody can download an artifact until you publish it.
+- **Nothing downloadable is produced**, so a public repo exposes no build at all: `release.yml` creates no GitHub Release and uploads no artifact.
 - **Fork PRs:** Settings → Actions → General → "Approval for running fork pull request workflows" → "Require approval for all external contributors".
 - **Commit emails are public.** Use the noreply address from GitHub → Settings → Emails: `git config user.email "<id>+{{GITHUB_OWNER}}@users.noreply.github.com"`.
 - **License:** with no `LICENSE` file the code is "all rights reserved". Flathub and similar stores need a license that allows redistribution.
@@ -78,10 +94,10 @@ Both mobile stores require a public privacy policy URL.
    ```powershell
    [Convert]::ToBase64String([IO.File]::ReadAllBytes("upload-keystore.jks")) | Set-Clipboard
    ```
-3. Wire the signing config into the Android build (`docs/STACK_NOTES.md` → Scaffold). The scaffold does not generate one, so without it the release build is debug-signed even with every secret set, and Play rejects the upload for not matching the upload certificate. The release workflow reads the built bundle's own certificate and fails on a debug one, rather than trusting that the secrets were used. For signed local builds, keep the keystore and a `key.properties` in the Android project too, both gitignored.
-4. In Play Console, create the app with package `{{APP_ID}}` and keep Play App Signing enabled.
-5. **Upload the first AAB by hand** in Play Console → Testing → Internal testing. The API can't create an app's first release.
-6. In Google Cloud, create a service account and a JSON key. In Play Console → Users and permissions, invite it with release permissions for this app. Save the JSON as `PLAY_SERVICE_ACCOUNT_JSON`.
+3. Wire the signing config into the Android build (`docs/STACK_NOTES.md` → Scaffold). The scaffold does not generate one, so without it the release build is debug-signed and Play rejects the upload for not matching the upload certificate. **Keep the keystore and a `key.properties` in the Android project, both gitignored** — signing is local, so this is the path that produces every uploadable bundle, not an extra.
+4. **Check the signer before every upload**, because the fall back to a debug key is silent: `keytool -printcert -jarfile dist/<slug>-X.Y.Z.aab`. The owner must be your certificate, not `CN=Android Debug`. On Windows `keytool` may not be on PATH — call it as `"$JAVA_HOME/bin/keytool.exe"`, since a bare `keytool` prints nothing and reads as a pass.
+5. In Play Console, create the app with package `{{APP_ID}}` and keep Play App Signing enabled.
+6. **Upload every AAB by hand** in Play Console → Testing → Internal testing. The API can't create an app's first release, and by the rule above it isn't used for the later ones either. No service account is created.
 7. **Production access** for a new personal developer account is an application, not a counter. At least 12 testers opted in for 14 continuous days is the entry condition, but the form also asks what the testers did, what they said, and what changed as a result — so run the closed test as a real test and keep the notes. Confirm the current rule in Play Console, and start it before the features are finished: this is the longest-lead item in the whole roadmap.
 8. **Contact details.** Play shows two public emails: the store listing's support email (App support) and the developer account's email (About the developer, on every app). Give both one dedicated support address, and keep the Play Console login private. A personal account also shows its legal name and country there; only an organization account (it needs a D-U-N-S number) shows the brand instead.
 9. **Payments profile → Public merchant profile:** the merchant name is the publisher, never a personal name, with the same support email.

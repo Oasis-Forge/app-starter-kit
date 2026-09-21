@@ -1,11 +1,12 @@
 name: Release
 
 # Every merge to main whose pubspec.yaml version (x.y.z+N) has no vX.Y.Z tag yet
-# builds the APK and AAB, tags the merge commit, and attaches the APK to a draft
-# GitHub Release with the CHANGELOG.md entry as notes. With signing and Play
-# secrets, the AAB also goes to Play internal testing as a draft. CI makes every
-# PR bump the version, so every merged PR gets its own APK. Manual runs outside
-# main only build artifacts.
+# builds the APK and AAB, checks the release manifest's permissions, and tags the
+# merge commit. CI makes every PR bump the version, so every merged PR gets a tag.
+#
+# It publishes nothing: no GitHub Release, no artifact, no Play upload. The build
+# here is a check, not a deliverable. What reaches Play is built locally, signed
+# from android/key.properties and uploaded by hand (docs/RELEASING.md).
 
 on:
   push:
@@ -65,7 +66,7 @@ jobs:
           { echo "name=$name"; echo "tag=$tag"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build and publish
+    name: Build and tag
     needs: version
     if: needs.version.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -74,7 +75,6 @@ jobs:
       NAME: ${{ needs.version.outputs.name }}
       TAG: ${{ needs.version.outputs.tag }}
       RELEASE: ${{ needs.version.outputs.release }}
-      HAS_PLAY_CREDENTIALS: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -176,25 +176,16 @@ jobs:
           fi
           echo "mapping=$mapping" >> "$GITHUB_OUTPUT"
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: android-${{ env.TAG }}
-          path: dist/
-          retention-days: 14
 
-      - name: Write release notes
-        if: env.RELEASE == 'true'
-        env:
-          SIGNED: ${{ steps.signing.outputs.signed }}
-        run: |
-          bash scripts/version.sh notes > release-notes.md
-          if [ "$SIGNED" != true ]; then
-            printf '\n> This APK is signed with a throwaway debug key, so it cannot update an installed copy. Back up in the app, uninstall, install this APK, then restore.\n' >> release-notes.md
-          fi
+      # This workflow publishes nothing. It exists to prove the release build
+      # compiles on a clean machine and to hold the permission gate above, then
+      # to tag the version. The bundle that reaches Play is built locally,
+      # signed from android/key.properties, and uploaded by hand
+      # (docs/RELEASING.md). Nothing downloadable is produced here, so nobody
+      # can mistake a CI build — debug-signed unless the optional keystore
+      # secrets are set — for the one that shipped.
 
       # The tag records the release; CI's version check compares PRs against it.
-      # A draft release doesn't create its tag, so push it first.
       - name: Tag the release
         if: env.RELEASE == 'true'
         run: |
@@ -203,24 +194,15 @@ jobs:
             git push origin "refs/tags/$TAG"
           fi
 
-      # Draft: on a public repo the APK stays private until you publish the release.
-      - name: Attach APK to a draft GitHub Release
+      - name: Say where the uploadable artifact comes from
         if: env.RELEASE == 'true'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ env.TAG }}
-          name: '{{APP_NAME}} ${{ env.NAME }}'
-          body_path: release-notes.md
-          files: dist/${{ env.SLUG }}-${{ env.NAME }}.apk
-          draft: true
-
-      - name: Upload to Play internal testing
-        if: env.RELEASE == 'true' && steps.signing.outputs.signed == 'true' && env.HAS_PLAY_CREDENTIALS == 'true'
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ env.PACKAGE_NAME }}
-          releaseFiles: dist/${{ env.SLUG }}-${{ env.NAME }}.aab
-          mappingFile: ${{ steps.files.outputs.mapping }}
-          track: internal
-          status: draft
+        run: |
+          {
+            echo "### $TAG tagged"
+            echo
+            echo "No artifact is published from CI. Build it locally and upload it by hand:"
+            echo
+            echo '    flutter build appbundle --release'
+            echo
+            echo "See docs/RELEASING.md."
+          } >> "$GITHUB_STEP_SUMMARY"

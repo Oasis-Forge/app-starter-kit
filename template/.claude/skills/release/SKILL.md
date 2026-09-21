@@ -8,7 +8,7 @@ Version bump for this branch: $ARGUMENTS (default: choose from the changes).
 
 **Keep it to a handful of tool calls.** Every call re-sends the whole conversation, so the cost is the number of steps, not the size of the work: read the version and the top of `CHANGELOG.md` in one command, write both files, commit, write the notes file in one go. A release without `--build` should take under ten calls and about a minute.
 
-Every PR merged to `main` is a release: `release.yml` tags `vX.Y.Z` and drafts a GitHub Release with the changelog entry and the artifacts. CI (`bash scripts/version.sh check`) fails a PR whose version isn't above the latest tag or has no changelog entry.
+Every PR merged to `main` is a release: `release.yml` builds as a check and tags `vX.Y.Z`. It publishes nothing — no GitHub Release, no artifact, no store upload — so the artifact a store receives is the one built locally here and uploaded by a person (`docs/RELEASING.md`). CI (`bash scripts/version.sh check`) fails a PR whose version isn't above the latest tag or has no changelog entry.
 
 1. Stop if on `main`. Run `git fetch --tags --quiet`; the latest release is the first line of `git tag --list "v*" --sort=-v:refname`. Read the current version with `bash scripts/version.sh name` and `build`. With no tag yet, keep the version and only write its entry. If the branch is already above the tag, adjust the level if needed and update its entry.
 2. Bump the tag's version per SemVer and reset the lower parts (`1.4.2` → `1.5.0`):

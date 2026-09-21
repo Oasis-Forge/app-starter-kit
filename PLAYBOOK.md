@@ -72,7 +72,9 @@ One theme per PR. Bundle related items: one-checkbox PRs cost more review time t
 
 ## 6. Release: `docs/RELEASING.md`, `CHANGELOG.md`
 
-- SemVer `x.y.z+N`. CI refuses a PR whose version isn't above the last tag or has no changelog entry. Merging tags `vX.Y.Z` and drafts a GitHub Release with the artifact. Drafts keep artifacts private on a public repo.
+- SemVer `x.y.z+N`. CI refuses a PR whose version isn't above the last tag or has no changelog entry. Merging tags `vX.Y.Z`.
+- **Nothing is published from CI** — no GitHub Release, no artifact, no store upload. `release.yml` builds and runs its gates as a *check*, then tags. The artifact a store receives is built on one machine, signed from a gitignored local keystore, and uploaded by a person. A CI build is unsigned or debug-signed unless the signing secrets are set, so anything downloadable from a workflow is a build nobody can install over an existing copy and nobody can upload — while looking exactly like the one that shipped. Keep the tag: the version check compares every PR against it, and the tag plus the changelog entry is the record of a version, not a release page.
+- **Check the signer before every upload.** Falling back to a debug key is silent, and the store just rejects the upload without saying why. `keytool -printcert -jarfile <artifact>`; on Windows call it as `"$JAVA_HOME/bin/keytool.exe"`, since a bare `keytool` may not be on PATH and then prints nothing, which reads as a pass.
 - Changelog entries are written for users: what they can now do, not class names.
 - `/release` also writes the store's release notes in every listing language, into `store/` (gitignored), where the listing text, graphics and data-safety files live too.
 - One-time store setup takes weeks, which is why the accounts are a Phase 0 item and not a Phase 5 one. Confirm the current production-access rule in the console: it is an application asking what the testers did, not a counter.

@@ -2,10 +2,10 @@
 
 Every PR merged to `main` is a release. The app version is the source of truth: `x.y.z` follows [Semantic Versioning](https://semver.org) (major for breaking changes, minor for new features, patch for fixes and everything else). Mobile stores also need a build number `N` (`x.y.z+N`) that grows by one with every release. `bash scripts/version.sh name` and `build` read them.
 
-1. **Before merging**, bump the version on the branch with `/release [major|minor|patch]`, or by hand: edit the version and add a `## [x.y.z] - YYYY-MM-DD` entry to `CHANGELOG.md`. CI fails if the version isn't above the latest `vX.Y.Z` tag or has no changelog entry. Dependabot PRs are exempt and ship with the next release.
-2. **On merge**, `release.yml` builds the release artifacts as a check, runs whatever gates the stack has, and tags the merge commit `vX.Y.Z`. It publishes nothing. A merge whose version is already tagged does nothing.
+1. **Before merging**, bump the version on the branch with `/release [major|minor|patch]`, or by hand: edit the version and add a `## [x.y.z] - YYYY-MM-DD` entry to `CHANGELOG.md`. CI fails if the version isn't above the one on `main` or has no changelog entry. Dependabot PRs are exempt and ship with the next release.
+2. **On merge**, `release.yml` builds the release artifacts as a check and runs whatever gates the stack has, including the version gate a second time. It publishes nothing and tags nothing.
 
-Tags pushed by CI don't start other workflows, so any other platform's release workflow is run by hand from the Actions tab, or with `gh workflow run <workflow>.yml --ref vX.Y.Z`. Each checks that the tag matches the version.
+Any other platform's release workflow is run by hand from the Actions tab, or with `gh workflow run <workflow>.yml --ref main`.
 
 ## Nothing is published from CI
 
@@ -16,8 +16,8 @@ A CI build is unsigned or debug-signed unless the signing secrets are set, so an
 What that means in practice:
 
 - **`release.yml` still builds**, because that proves the release build compiles somewhere other than the developer's machine, and it is where the release-manifest and permission gates run. Its build is a check, not a deliverable.
-- **It still pushes the `vX.Y.Z` tag**, because CI's version check compares every PR against the latest tag. Dropping the tag breaks the release gate.
-- **The record of a version is its tag plus its `CHANGELOG.md` entry**, not a release page.
+- **No tag is pushed either.** `scripts/version.sh check` compares a PR against the version on `origin/main` instead. On main — the merge build — it compares against the commit before the merge, which keeps the safeguard tags used to provide: two PRs opened together both pass against the same trunk, and without that second look the one merged last ships as part of no release. The job needs `fetch-depth: 2` for it.
+- **The record of a version is its `CHANGELOG.md` entry** and the commit that raised it, not a tag or a release page.
 - **Signing is local.** Keep the keystore and `key.properties` in the project, both gitignored. The store-credential secrets below become unnecessary; set them only if a CI-built artifact ever has to be uploadable.
 - **Check the signer before every upload.** The fall back to a debug key is silent, and a store rejects the upload rather than explaining it.
 
@@ -30,8 +30,8 @@ A store-publishing service account is not created at all.
 Every merged PR is a release, so there will be a bad one. Decide none of this while it is happening.
 
 1. **Stop the spread first.** In Play Console, halt the rollout on the track it is on. A version code that has been published can never be reused or re-uploaded, and an app cannot be rolled back to an earlier release: the only way out is a higher version going out.
-2. **Fix forward, never backward.** `git revert` the merge and open a PR, and CI refuses it — the reverted tree's version is at or below the latest `vX.Y.Z` tag, which is exactly what `scripts/version.sh check` exists to catch. That is a stuck pipeline during the one hour it matters. If the fix *is* a revert, revert on a branch off a freshly pulled `main` **and** run `/release patch` on it, so the undo is itself a release with its own version and changelog entry.
-3. **Leave the tag alone.** The tag records what shipped, and CI compares every later PR against it. Deleting it makes the next version check compare against the wrong thing.
+2. **Fix forward, never backward.** `git revert` the merge and open a PR, and CI refuses it — the reverted tree's version is at or below main's, which is exactly what `scripts/version.sh check` exists to catch. That is a stuck pipeline during the one hour it matters. If the fix *is* a revert, revert on a branch off a freshly pulled `main` **and** run `/release patch` on it, so the undo is itself a release with its own version and changelog entry.
+3. **Don't rewrite main's history to undo it.** The version gate reads the version off `origin/main`, so rewriting the commit that raised it makes the next check compare against the wrong thing. Go forward instead.
 4. **Say what happened in the changelog**, in the same user-facing words as everything else: what was wrong and what the new version does about it.
 5. **Read the crash before guessing.** Play symbolicates with the deobfuscation mapping carried inside the uploaded bundle, so the stack traces in Play Console are readable. Keep the bundle you uploaded: it is the only copy, since CI publishes nothing.
 

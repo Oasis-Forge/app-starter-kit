@@ -67,19 +67,20 @@ One theme per PR. Bundle related items: one-checkbox PRs cost more review time t
 4. Model → migration → state → screen → test → analyze. Translations go in the same change.
 5. `/verify`.
 6. `/ship`: coverage of the changed files, missing tests, docs, `/release`, driving the built app by hand, then the PR (`--body-file`).
-7. **Stop.** You test and merge. The merge tags the version and drafts the GitHub Release.
+7. **Stop.** You test and merge. The merge builds as a check and leaves nothing behind: the store artifact is built locally and uploaded by hand.
 8. `/handoff` before clearing the chat. On "resume", Claude reads it, checks `gh pr list`, and takes the next item.
 
 ## 6. Release: `docs/RELEASING.md`, `CHANGELOG.md`
 
-- SemVer `x.y.z+N`. CI refuses a PR whose version isn't above the last tag or has no changelog entry. Merging tags `vX.Y.Z`.
-- **Nothing is published from CI** — no GitHub Release, no artifact, no store upload. `release.yml` builds and runs its gates as a *check*, then tags. The artifact a store receives is built on one machine, signed from a gitignored local keystore, and uploaded by a person. A CI build is unsigned or debug-signed unless the signing secrets are set, so anything downloadable from a workflow is a build nobody can install over an existing copy and nobody can upload — while looking exactly like the one that shipped. Keep the tag: the version check compares every PR against it, and the tag plus the changelog entry is the record of a version, not a release page.
+- SemVer `x.y.z+N`. CI refuses a PR whose version isn't above the one on `main`, or that has no changelog entry.
+- **Nothing is published from CI and nothing is tagged** — no GitHub Release, no artifact, no store upload, no `vX.Y.Z`. `release.yml` builds and runs its gates as a *check*, and that is all it leaves behind. The artifact a store receives is built on one machine, signed from a gitignored local keystore, and uploaded by a person. A CI build is unsigned or debug-signed unless the signing secrets are set, so anything downloadable from a workflow is a build nobody can install over an existing copy and nobody can upload — while looking exactly like the one that shipped. The record of a version is its `CHANGELOG.md` entry and the commit that raised it.
+- **With no tags, the version gate compares against the trunk.** `scripts/version.sh check` reads the version on `origin/main` and refuses a PR that doesn't rise above it. On main itself — the merge build — it compares against the commit *before* the merge instead, which is what keeps the old tag-era safeguard: two PRs opened together both pass against the same trunk, and without that second look the one merged last would ship as part of no release. It needs `fetch-depth: 2`.
 - **Check the signer before every upload.** Falling back to a debug key is silent, and the store just rejects the upload without saying why. `keytool -printcert -jarfile <artifact>`; on Windows call it as `"$JAVA_HOME/bin/keytool.exe"`, since a bare `keytool` may not be on PATH and then prints nothing, which reads as a pass.
 - Changelog entries are written for users: what they can now do, not class names.
 - `/release` also writes the store's release notes in every listing language, into `store/` (gitignored), where the listing text, graphics and data-safety files live too.
 - One-time store setup takes weeks, which is why the accounts are a Phase 0 item and not a Phase 5 one. Confirm the current production-access rule in the console: it is an application asking what the testers did, not a counter.
 - The privacy policy lives in `docs/` on GitHub Pages. Update it in every PR that touches user data. Pages publishes everything in `docs/`, so `docs/_config.yml` decides what is public and CI fails when a new doc is neither excluded nor declared.
-- **A bad release is fixed forward, never backward.** A published version code can't be reused, and reverting the merge produces a PR whose version is below the latest tag — which the version check refuses, wedging the pipeline in the one hour it matters. Halt the rollout, then ship a patch (`docs/RELEASING.md` → When a release is bad).
+- **A bad release is fixed forward, never backward.** A published version code can't be reused, and reverting the merge produces a PR whose version is at or below main's — which the version check refuses, wedging the pipeline in the one hour it matters. Halt the rollout, then ship a patch (`docs/RELEASING.md` → When a release is bad).
 
 ## The session is the unit of cost
 

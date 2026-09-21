@@ -87,19 +87,41 @@ printf 'name: app\nversion: 1.1.0+9\n' > "$d/pubspec.yaml"
 
 echo ""
 echo "check"
-# The whole point: --depth=1 is a property of the fetch, not the refspec, so running
-# this against a full clone used to write .git/shallow and truncate the repository.
+# The baseline is the version on origin/main, not a tag: nothing is published
+# from CI, so the repo carries no release tags to compare against.
+#
+# The other point: --depth=1 is a property of the fetch, not the refspec, so
+# running this against a full clone used to write .git/shallow and truncate the
+# repository.
 printf 'name: app\nversion: 1.0.0+1\n' > "$d/pubspec.yaml"
 git -C "$d" add -A > /dev/null
 git -C "$d" commit --quiet -m one
-git -C "$d" tag v1.0.0
 git -C "$d" commit --quiet --allow-empty -m two
+git -C "$d" push --quiet origin main
+
+# On main — the merge build — the baseline is the commit before the merge.
+# Two PRs opened together both pass the gate against the same main; the first
+# merge moves it, and the second would otherwise ship as part of no release.
+# Here the last commit left the version alone, which is that case.
+(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad 'on main, a version the last commit did not raise is refused' || ok 'on main, a version the last commit did not raise is refused'
+
+# The same merge build, but the merge did raise the version: that is a release.
+# In its own fixture, so pushing to main here can't move the baseline the
+# checks below rely on.
+d6=$(repo mainraise)
+printf 'name: app\nversion: 1.0.0+1\n' > "$d6/pubspec.yaml"
+git -C "$d6" add -A > /dev/null
+git -C "$d6" commit --quiet -m one
+git -C "$d6" push --quiet origin main
+printf 'name: app\nversion: 1.1.0+2\n' > "$d6/pubspec.yaml"
+git -C "$d6" add -A > /dev/null
+git -C "$d6" commit --quiet -m 'raise on main'
+git -C "$d6" push --quiet origin main
+(cd "$d6" && bash version.sh check > /dev/null 2>&1) && ok 'on main, a raised version is a release' || bad 'on main, a raised version is a release'
+
+# Now a branch: HEAD is ahead of origin/main, which is what a PR looks like.
 git -C "$d" commit --quiet --allow-empty -m three
 printf 'name: app\nversion: 1.1.0+9\n' > "$d/pubspec.yaml"
-git -C "$d" add -A > /dev/null
-git -C "$d" commit --quiet -m four
-git -C "$d" push --quiet origin main
-git -C "$d" push --quiet origin v1.0.0
 before=$(git -C "$d" rev-list --count HEAD)
 (cd "$d" && bash version.sh check > /dev/null) && ok 'a raised version passes' || bad 'a raised version passes'
 after=$(git -C "$d" rev-list --count HEAD)
@@ -107,9 +129,11 @@ check 'the local clone keeps its history' "$after" "$before"
 check 'no .git/shallow is written' "$(git -C "$d" rev-parse --is-shallow-repository)" 'false'
 
 printf 'name: app\nversion: 1.0.0+9\n' > "$d/pubspec.yaml"
-(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad 'a version at the tag is refused' || ok 'a version at the tag is refused'
+(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad "a version at main's is refused" || ok "a version at main's is refused"
+printf 'name: app\nversion: 0.9.0+9\n' > "$d/pubspec.yaml"
+(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad "a version below main's is refused" || ok "a version below main's is refused"
 printf 'name: app\nversion: 1.1.0+1\n' > "$d/pubspec.yaml"
-(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad 'a build number at the tag is refused' || ok 'a build number at the tag is refused'
+(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad "a build number at main's is refused" || ok "a build number at main's is refused"
 printf 'name: app\nversion: 1.1.0+9\n' > "$d/pubspec.yaml"
 
 # Before /kickoff creates the GitHub repo there is no origin. That is "nothing is

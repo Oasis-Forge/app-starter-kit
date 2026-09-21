@@ -1,9 +1,14 @@
 name: Release
 
-# Every merge to main whose version has no vX.Y.Z tag yet tags the merge commit
-# and drafts a GitHub Release with the CHANGELOG.md entry as notes. CI makes every
-# PR bump the version, so every merged PR is a release. A stack overlay replaces
-# this file with one that also builds and attaches the artifacts.
+# Every merge to main runs this. CI makes every PR bump the version, so every
+# merged PR is a release. A stack overlay replaces this file with one that also
+# builds, as a check.
+#
+# It publishes nothing: no GitHub Release, no artifact, no store upload. A CI
+# build is unsigned or debug-signed unless the optional signing secrets are set,
+# so anything downloadable from here is a build nobody can install over an
+# existing copy and nobody can upload to a store — while looking exactly like the
+# one that shipped. One machine produces the real artifact (docs/RELEASING.md).
 
 on:
   push:
@@ -11,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -19,7 +24,7 @@ concurrency:
 
 jobs:
   release:
-    name: Tag and draft the release
+    name: Build and check
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -29,40 +34,27 @@ jobs:
         id: version
         run: |
           name=$(bash scripts/version.sh name)
-          tag="v$name"
           release=false
           if [ "$GITHUB_REF" != refs/heads/main ]; then
-            echo "Not on main: $tag is not released." >> "$GITHUB_STEP_SUMMARY"
-          elif git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
-            echo "$tag is already released: nothing to release." >> "$GITHUB_STEP_SUMMARY"
+            echo "Not on main: building $name as a check only." >> "$GITHUB_STEP_SUMMARY"
           else
             release=true
           fi
-          { echo "name=$name"; echo "tag=$tag"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
+          { echo "name=$name"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
 
-      # Build the release artifacts into dist/ here, named after the version.
+      # A stack overlay builds the release artifacts here, as a check that the
+      # release build compiles on a clean machine and to run whatever gates the
+      # stack has. Nothing is uploaded, attached or tagged: the artifact that
+      # reaches a store is built locally (docs/RELEASING.md).
 
-      - name: Write release notes
-        if: steps.version.outputs.release == 'true'
-        run: bash scripts/version.sh notes > release-notes.md
-
-      # CI's version check compares PRs against this tag. A draft release doesn't
-      # create its tag, so push it first.
-      - name: Tag the release
+      - name: Say where the uploadable artifact comes from
         if: steps.version.outputs.release == 'true'
         env:
-          TAG: ${{ steps.version.outputs.tag }}
+          NAME: ${{ steps.version.outputs.name }}
         run: |
-          git tag "$TAG" "$GITHUB_SHA"
-          git push origin "refs/tags/$TAG"
-
-      # Draft: on a public repo the artifacts stay private until you publish.
-      - name: Draft the GitHub Release
-        if: steps.version.outputs.release == 'true'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: '{{APP_NAME}} ${{ steps.version.outputs.name }}'
-          body_path: release-notes.md
-          files: dist/*
-          draft: true
+          {
+            echo "### $NAME builds"
+            echo
+            echo "Nothing is published from CI and no tag is pushed."
+            echo "Build the artifact locally and upload it by hand — see docs/RELEASING.md."
+          } >> "$GITHUB_STEP_SUMMARY"

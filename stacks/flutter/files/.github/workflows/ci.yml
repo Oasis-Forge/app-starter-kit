@@ -77,7 +77,7 @@ jobs:
         run: bash scripts/rules.sh
 
       # Every merged PR is a release (release.yml), so the version in pubspec.yaml
-      # must be above the latest vX.Y.Z tag and have a CHANGELOG.md entry.
+      # must be above main's and have a CHANGELOG.md entry.
       # Dependabot PRs ship with the next release instead.
       - name: Check version bump
         if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}

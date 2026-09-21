@@ -7,7 +7,7 @@ Set up before the first feature, while it's cheap.
 - [ ] `CLAUDE.md`, `.claude/` settings, format hook, `/spec` `/verify` `/release` `/ship` `/handoff` skills, `build-doctor` agent (`/kickoff`)
 - [ ] GitHub repo, Dependabot, CI (checks + a build for every mobile platform) green on a first PR
 - [ ] `main` ruleset: PR required, the CI checks required, no force pushes or deletion (`docs/RELEASING.md`)
-- [ ] Every merged PR is a release: the CI version check, then a tag and a draft GitHub Release on merge. `v0.1.0` is the first.
+- [ ] Every merged PR is a release: the CI version check, then a build-as-a-check and a tag on merge. Nothing is published from CI; the store artifact is built locally and uploaded by hand (`docs/RELEASING.md`). `v0.1.0` is the first.
 - [ ] The release workflow runs once by hand without secrets (unsigned artifacts, nothing published)
 - [ ] Privacy policy draft served by GitHub Pages
 - [ ] The first product rules (`docs/PRODUCT_RULES.md`) for the areas Phase 2 opens with

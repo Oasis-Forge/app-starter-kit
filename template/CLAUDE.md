@@ -24,7 +24,8 @@
 - Every model/state change gets a test. Tests assert what the user sees (text on screen, contents of a file), never just that output exists.
 - Feature order: model → migration → state → screen → test → analyze.
 - One branch per theme, PR to `main`; CI (`.github/workflows/ci.yml`) must pass.
-- Every merged PR is a release: `/release [major|minor|patch]` on the branch (SemVer + `CHANGELOG.md` entry; CI checks it). The merge tags `vX.Y.Z` and drafts a GitHub Release. The local build goes to `dist/{{SLUG}}-X.Y.Z.*` (gitignored); rebuild it after any app change on the branch. It also writes the store's release notes, in every listing language, to `store/<store>/release-notes/X.Y.Z.txt`.
+- Every merged PR is a release: `/release [major|minor|patch]` on the branch (SemVer + `CHANGELOG.md` entry; CI checks it). Nothing is tagged. The local build goes to `dist/{{SLUG}}-X.Y.Z.*` (gitignored); rebuild it after any app change on the branch. It also writes the store's release notes, in every listing language, to `store/<store>/release-notes/X.Y.Z.txt`.
+- **Nothing is published from CI and nothing is tagged:** no GitHub Release, no artifact, no store upload, no `vX.Y.Z`. `release.yml` builds and runs its gates as a *check*, and that is all it leaves behind. The artifact a store receives is built locally, signed from the project's gitignored keystore, and uploaded by a person — so check its signer before handing it over, because falling back to a debug key is silent (`docs/RELEASING.md`).
 - Before a branch is merged: `/ship` (coverage of changed files, missing tests, docs, `/verify`, `/release`, drive it by hand, PR). The format check is the last thing before a commit, never a mid-session step.
 
 ## Workflow

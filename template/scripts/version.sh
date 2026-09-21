@@ -3,7 +3,7 @@
 #
 #   scripts/version.sh name    print x.y.z
 #   scripts/version.sh build   print the build number N (0 when there is none)
-#   scripts/version.sh check   fail unless the version is above the latest vX.Y.Z tag
+#   scripts/version.sh check   fail unless the version is above the base branch's
 #                              and CHANGELOG.md has a "## [x.y.z] - YYYY-MM-DD" entry
 #   scripts/version.sh notes   print the CHANGELOG.md entry for the current version
 #
@@ -46,20 +46,61 @@ changelog_entry() {
   ' CHANGELOG.md
 }
 
-# The newest vX.Y.Z on origin, or empty when nothing is released yet. An origin that
-# is configured but unreachable is an error worth naming: without this, set -e killed
-# the script on the command substitution and printed git's raw "fatal:" with exit 128,
-# so the ::error:: annotation this script exists to produce never appeared.
-latest_remote_tag() {
-  local tags
+# The version already on the trunk, which is what a PR has to rise above, or
+# empty when there is no baseline yet. Release tags are not used: nothing is
+# published from CI, so there are none to compare with.
+#
+# An origin that is configured but unreachable is an error worth naming: a
+# silent pass would skip the gate exactly when the network is the problem, and
+# without this, set -e killed the script on the command substitution and
+# printed git's raw "fatal:" with exit 128, so the ::error:: annotation this
+# script exists to produce never appeared.
+base_branch_version() {
+  local branch=${VERSION_BASE_BRANCH:-main}
+  local ref="refs/remotes/origin/$branch"
+  local heads status
   if ! git remote get-url origin > /dev/null 2>&1; then
-    echo "No origin remote yet, so nothing is released." >&2
+    echo "No origin remote yet, so there is nothing to compare against." >&2
     return 0
   fi
-  if ! tags=$(git ls-remote --tags --refs origin 'v*' 2>&1); then
-    fail "can't reach origin to find the last release tag: $(printf '%s' "$tags" | head -n 1)"
+
+  # Reachable and the branch exists? 0. Reachable and it doesn't (a repo whose
+  # trunk was never pushed)? 2, and there is simply no baseline. Anything else
+  # is the network, and has to be said out loud.
+  status=0
+  heads=$(git ls-remote --exit-code --heads origin "$branch" 2>&1) || status=$?
+  case "$status" in
+    0) ;;
+    2) echo "origin has no $branch yet, so there is nothing to compare against." >&2
+       return 0 ;;
+    *) fail "can't reach origin to read $branch's version: $(printf '%s' "$heads" | head -n 1)" ;;
+  esac
+
+  if ! git rev-parse --verify --quiet "$ref" > /dev/null; then
+    # --depth=1 is a property of the fetch, not of the refspec: run against a full
+    # local clone it writes .git/shallow and truncates the repository, silently, so
+    # a later `git log origin/main..HEAD` reads across the cut. CI is already shallow
+    # (actions/checkout defaults to fetch-depth 1), which is the only case that wants it.
+    if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+      git fetch --quiet --depth=1 origin "+refs/heads/$branch:$ref"
+    else
+      git fetch --quiet origin "+refs/heads/$branch:$ref"
+    fi
   fi
-  printf '%s\n' "$tags" | sed -n 's|.*refs/tags/||p' | sort -V | tail -n 1
+
+  if [ "$(git rev-parse HEAD)" = "$(git rev-parse "$ref")" ]; then
+    # On the trunk itself — the merge build — compare against the commit
+    # before the merge. Two PRs opened together both pass the gate against the
+    # same trunk; the first merge moves it, and without this the second would
+    # ship as part of no release, leaving the trunk's code unreleased and the
+    # artifact older than its own changelog. Needs fetch-depth 2 in CI; with a
+    # depth-1 checkout there is no previous commit to read and the check is
+    # skipped rather than guessed at.
+    git rev-parse --verify --quiet HEAD~1 > /dev/null || return 0
+    git show "HEAD~1:$file" 2>/dev/null | parse "$file"
+    return 0
+  fi
+  git show "$ref:$file" 2>/dev/null | parse "$file"
 }
 
 file=$(version_file)
@@ -72,30 +113,28 @@ case "${1:-}" in
   build) echo "$build" ;;
   notes) changelog_entry "$name" || fail "CHANGELOG.md has no '## [$name] - ' entry" ;;
   check)
-    last_tag=$(latest_remote_tag)
-    if [ -n "$last_tag" ]; then
-      # --depth=1 is a property of the fetch, not of the refspec: run against a full
-      # local clone it writes .git/shallow and truncates the repository, silently, so
-      # a later `git log origin/main..HEAD` reads across the cut. CI is already shallow
-      # (actions/checkout defaults to fetch-depth 1), which is the only case that wants it.
-      if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
-        git fetch --quiet --depth=1 origin "+refs/tags/$last_tag:refs/tags/$last_tag"
-      else
-        git fetch --quiet origin "+refs/tags/$last_tag:refs/tags/$last_tag"
-      fi
-      read -r last_name last_build < <(git show "$last_tag:$file" 2>/dev/null | parse "$file") || true
-      last_name=${last_name:-${last_tag#v}}
-      last_build=${last_build:-0}
+    base_branch=${VERSION_BASE_BRANCH:-main}
+    last_name=
+    last_build=0
+    # Command substitution, not `< <(…)`: a process substitution runs in a
+    # subshell whose exit status the script never sees, so `fail` inside the
+    # helper would print its annotation and then be ignored. Assigning lets
+    # set -e stop the script, which is the whole point of naming the error.
+    baseline=$(base_branch_version)
+    read -r last_name last_build <<< "$baseline" || true
+    last_build=${last_build:-0}
+
+    if [ -n "$last_name" ]; then
       highest=$(printf '%s\n%s\n' "$last_name" "$name" | sort -V | tail -n 1)
       if [ "$name" = "$last_name" ] || [ "$highest" != "$name" ]; then
-        fail "$last_tag is released: raise the version above $last_name (major, minor, or patch)"
+        fail "$base_branch was already on $last_name: raise the version above it (major, minor, or patch)"
       fi
       if [ "$build" != 0 ] && [ "$build" -le "$last_build" ]; then
-        fail "$last_tag is released: raise the build number above $last_build"
+        fail "$base_branch was already on build $last_build: raise the build number above it"
       fi
     fi
     changelog_entry "$name" > /dev/null || fail "CHANGELOG.md needs a '## [$name] - YYYY-MM-DD' entry"
-    echo "Merging releases $name+$build (previous release: ${last_tag:-none})."
+    echo "Releasing $name+$build (was ${last_name:-nothing yet})."
     ;;
   *) usage ;;
 esac

@@ -1,10 +1,10 @@
 name: Release
 
 # Every merge to main builds the APK and AAB and checks the release manifest's
-# permissions. CI makes every PR bump the version, so a merge is normally a
-# release; one that leaves the version alone (a Dependabot PR, or a PR merged
-# behind another) is built and checked all the same, and the summary says it is
-# not a release.
+# permissions. Most merges are not releases: a release is the maintainer's call,
+# and a PR that leaves the version alone is the normal case. Either way the merge
+# is built and checked, because that is where a release build first meets a clean
+# machine; only the summary says whether the version moved.
 #
 # It leaves nothing behind: no GitHub Release, no artifact, no Play upload, and
 # no tag. The build here is a check that the release build compiles on a clean

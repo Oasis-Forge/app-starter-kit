@@ -153,8 +153,20 @@ after=$(git -C "$d" rev-list --count HEAD)
 check 'the local clone keeps its history' "$after" "$before"
 check 'no .git/shallow is written' "$(git -C "$d" rev-parse --is-shallow-repository)" 'false'
 
+# A branch that leaves the version exactly where main has it is not a release and
+# has nothing to gate. This is the case the gate used to be built to refuse, which
+# forced a version bump onto every PR whether or not anyone wanted to release.
+printf 'name: app\nversion: 1.0.0+1\n' > "$d/pubspec.yaml"
+out=$(cd "$d" && bash version.sh check 2>&1); code=$?
+check 'a branch that leaves the version alone passes' "$code" '0'
+case "$out" in *"::error::"*) bad "and it is not an error (got: $out)" ;; *) ok 'and it is not an error' ;; esac
+case "$out" in *"No release here"*) ok 'and says the version stood still' ;; *) bad "and says the version stood still (got: $out)" ;; esac
+
+# Half a move is still a move, and still gated: the changelog is keyed on x.y.z,
+# so a build number raised under the version main already has has no entry of its
+# own to check.
 printf 'name: app\nversion: 1.0.0+9\n' > "$d/pubspec.yaml"
-(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad "a version at main's is refused" || ok "a version at main's is refused"
+(cd "$d" && bash version.sh check > /dev/null 2>&1) && bad "a build number raised without the version is refused" || ok "a build number raised without the version is refused"
 printf 'name: app\nversion: 0.9.0+9\n' > "$d/pubspec.yaml"
 (cd "$d" && bash version.sh check > /dev/null 2>&1) && bad "a version below main's is refused" || ok "a version below main's is refused"
 printf 'name: app\nversion: 1.1.0+1\n' > "$d/pubspec.yaml"

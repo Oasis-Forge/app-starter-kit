@@ -8,7 +8,7 @@
 <!-- Items ticked in docs/ROADMAP.md. -->
 
 ## Release
-Version `x.y.z` (major / minor / patch), with its `CHANGELOG.md` entry.
+No release, or version `x.y.z` (major / minor / patch) with its `CHANGELOG.md` entry. Most branches are not releases: the entry waits under **Unreleased** until the user asks for one.
 
 ## Checked
 - [ ] `/verify` passes; coverage of the changed files reviewed and gaps tested

@@ -3,8 +3,11 @@
 #
 #   scripts/version.sh name      print x.y.z
 #   scripts/version.sh build     print the build number N (0 when there is none)
-#   scripts/version.sh check     fail unless the version is above the base branch's
-#                                and CHANGELOG.md has a "## [x.y.z] - YYYY-MM-DD" entry.
+#   scripts/version.sh check     pass when the version stands still, because a release
+#                                is the maintainer's call and most branches are not one.
+#                                When a branch does raise it, fail unless it is above
+#                                the base branch's and CHANGELOG.md has a
+#                                "## [x.y.z] - YYYY-MM-DD" entry.
 #                                On the base branch itself there is no PR to gate, so
 #                                it reports whether this commit is a release instead
 #   scripts/version.sh released  print true when this commit raised the version above
@@ -114,11 +117,12 @@ version_at() {
 # build's question, asked on the trunk where there is no PR to gate. It needs the
 # previous commit (fetch-depth 2 in CI) and no origin.
 #
-# A merge that leaves the version alone is a Dependabot PR, exempt from the gate
-# by design, or a PR merged behind another that took the same version. It is not a
-# release, and nothing a failed build could fix -- the trunk cannot raise its own
-# version -- so it is a notice, never an error. The gate used to fail release.yml
-# on every Dependabot merge.
+# A merge that leaves the version alone is the ordinary case now that a release is
+# the maintainer's call: most PRs raise nothing, and a dependency bump or a PR
+# merged behind another that took the same version never did. It is not a release,
+# and nothing a failed build could fix -- the trunk cannot raise its own version --
+# so it is a notice, never an error. The gate used to fail release.yml on every
+# Dependabot merge.
 release_of_this_commit() {
   local prev_name
   if ! git rev-parse --verify --quiet HEAD~1 > /dev/null; then
@@ -173,6 +177,15 @@ case "${1:-}" in
     fi
 
     if [ -n "$last_name" ]; then
+      # A branch that leaves the version alone is not a release and has nothing
+      # to gate. Standing still used to be the one thing this refused, so every
+      # PR carried a version bump whether or not anyone wanted to release; the
+      # maintainer decides now, and what lands in between waits under
+      # Unreleased in CHANGELOG.md.
+      if [ "$name" = "$last_name" ] && [ "$build" = "$last_build" ]; then
+        echo "No release here: still $name+$build, the same as $base_branch."
+        exit 0
+      fi
       if ! above "$name" "$last_name"; then
         fail "$base_branch was already on $last_name: raise the version above it (major, minor, or patch)"
       fi

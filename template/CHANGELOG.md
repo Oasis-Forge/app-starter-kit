@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes per release, written for users. Versions follow [Semantic Versioning](https://semver.org) and match the app version. Every merged PR is a release (see `docs/RELEASING.md`).
+Notable changes per release, written for users. Versions follow [Semantic Versioning](https://semver.org) and match the app version. A release is cut when the user asks for one, not on every merge: what lands in between waits under **Unreleased** (see `docs/RELEASING.md`).
 
 ## [Unreleased]
 

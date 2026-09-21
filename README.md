@@ -29,7 +29,7 @@ template/                           Copied into every app
   .claude/skills/spec               Write a feature's rules before code
   .claude/skills/verify             Format + analyze + tests, failures only
   .claude/skills/release            SemVer bump + changelog + local artifacts + store release notes
-  .claude/skills/ship               Pre-merge gate: coverage, drive by hand, release, PR
+  .claude/skills/ship               Pre-merge gate: coverage, drive by hand, PR (release only if asked)
   .claude/skills/handoff            Save where work stopped before clearing the chat
   .claude/agents/build-doctor.md    Long build logs → root cause, on Haiku
   .github/                          CI with version check, release on merge, PR template, Dependabot, @claude

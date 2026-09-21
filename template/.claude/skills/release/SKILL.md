@@ -1,6 +1,6 @@
 ---
 name: release
-description: Bump the app version (SemVer, plus a build number where the stores need one), add its CHANGELOG.md entry, and write the store's release notes, on the current feature branch, so merging the PR releases it. Builds the local artifacts only with --build. Use when finalizing a PR.
+description: Cut a release on the current feature branch: bump the app version (SemVer, plus a build number where the stores need one), move the Unreleased changelog entries under it, and write the store's release notes in every listing language. Builds the local artifacts only with --build. Use only when the user has asked for a release, not on every PR.
 argument-hint: "[major|minor|patch] [--build]"
 ---
 
@@ -8,7 +8,9 @@ Version bump for this branch: $ARGUMENTS (default: choose from the changes).
 
 **Keep it to a handful of tool calls.** Every call re-sends the whole conversation, so the cost is the number of steps, not the size of the work: read the version and the top of `CHANGELOG.md` in one command, write both files, commit, write the notes file in one go. A release without `--build` should take under ten calls and about a minute.
 
-Every PR merged to `main` is a release: `release.yml` builds as a check and leaves nothing behind — no GitHub Release, no artifact, no store upload, no tag. The artifact a store receives is the one built locally here and uploaded by a person (`docs/RELEASING.md`). CI (`bash scripts/version.sh check`) fails a PR whose version isn't above the one on `main`, or that has no changelog entry.
+A release is cut when the user asks for one — **not on every merge**. Run this skill only when they have asked. Otherwise the change goes under `## [Unreleased]` in `CHANGELOG.md`, the version is left alone, and CI is content: `bash scripts/version.sh check` passes a branch whose version stands still, and checks it in full only once it moves — above `main`'s, with its changelog entry.
+
+`release.yml` builds as a check and leaves nothing behind — no GitHub Release, no artifact, no store upload, no tag. The artifact a store receives is the one built locally here and uploaded by a person (`docs/RELEASING.md`).
 
 1. Stop if on `main`. Run `git fetch origin main --quiet`; the version to beat is `main`'s, which `bash scripts/version.sh check` compares against — there are no release tags. Read the branch's current version with `bash scripts/version.sh name` and `build`. If the branch is already above `main`, adjust the level if needed and update its entry rather than bumping twice.
 2. Bump `main`'s version per SemVer and reset the lower parts (`1.4.2` → `1.5.0`):
